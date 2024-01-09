@@ -1,10 +1,10 @@
 ---
 include:
   - docassemble.AssemblyLine:al_package.yml
+  - docassemble.ALToolbox:al_income.yml
   - docassemble.ALMassachusetts:al_massachusetts.yml
   - docassemble.MassAccess:massaccess.yml
-  - docassemble.ALToolbox:al_income.yml
-  - docassemble.ALAffidavitOfIndigency:affidavit_of_indigency_supplement_body.yml
+  - ItemizedJobList_custom.yml
   - review.yml
 ---
 metadata:
@@ -15,6 +15,9 @@ metadata:
   tags:
     - FA-00-00-00-00
   authors:
+    - Lemma Legal
+    - Mia Bonardi
+    - Plocket
     - Caroline Robinson
     - Lily Yang
     - Jeff Wolf
@@ -198,54 +201,6 @@ question: |
 fields:
   - code: |
       other_parties[i].name_fields(person_or_business='person')
----
-sets:
-  - x.employer.name.first
-id: employer
-generic object: ALItemizedJob
-question: |
-  Tell us who employs you as a ${ x.source }
-fields:
-  - I am self-employed: x.is_self_employed
-    datatype: yesno
-  - Employer's name: x.employer.name.first
-    show if:
-      variable: x.is_self_employed
-      is: False
-  - note: |
-      ---
-
-      Employer's contact information
-    show if:
-      variable: x.is_self_employed
-      is: False
-  - Street address: x.employer.address.address
-    address autocomplete: True
-    show if:
-      variable: x.is_self_employed
-      is: False
-  - Unit: x.employer.address.unit
-    required: False
-    show if:
-      variable: x.is_self_employed
-      is: False
-  - City: x.employer.address.city
-    show if:
-      variable: x.is_self_employed
-      is: False
-  - State: x.employer.address.state
-    show if:
-      variable: x.is_self_employed
-      is: False
-  - Zip or postal code: x.employer.address.zip
-    required: False
-    show if:
-      variable: x.is_self_employed
-      is: False
-  - Phone number: x.employer.phone_number
-    show if:
-      variable: x.is_self_employed
-      is: False
 ---
 comment: |
   This question is used to introduce your interview. Please customize
@@ -1006,10 +961,10 @@ attachments:
       - "base_pay_is_salary": ${ True if True in [not job.is_part_time and not job.is_hourly for job in jobs] else False }
       - "base_pay_is_wages": ${ True if True in [job.is_part_time and not job.is_hourly for job in jobs] else False }
       - "income_base_pay_amount": ${ currency(jobs.total(times_per_year=52, source=["full time"])) }
-      - "income_overtime_amount": ${ currency(income_overtime_amount) }
+      - "income_overtime_amount": ${ currency(jobs.total(times_per_year=52, source=["overtime"])) }
       - "income_part_time_amount": ${ currency(jobs.total(times_per_year=52, source=["part time"])) }
       - "income_self_employment_amount": ${ currency(income_self_employment_amount) }
-      - "income_tips_amount": ${ currency(income_tips_amount) }
+      - "income_tips_amount": ${ currency(jobs.total(times_per_year=52, source=["tips"])) }
       - "bonuses": ${ bonuses }
       - "commissions": ${ commissions }
       - "income_commissions_bonuses_amount": ${ currency(income_commissions_bonuses_amount) }
