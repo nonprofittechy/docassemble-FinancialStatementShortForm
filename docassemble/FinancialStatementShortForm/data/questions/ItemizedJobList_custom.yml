@@ -1,0 +1,122 @@
+---
+generic object: ALItemizedJob
+code: |
+  x.source
+  if not x.is_self_employed:
+    x.employer.name.first
+  else:
+    x.employer.name.first = "Self-employed"
+    x.employer.name.last = ""
+    x.employer.phone = ""
+    x.employer.address.address = ""
+  x.times_per_year
+  x.to_add.complete_attribute = 'complete'
+  x.to_subtract.complete_attribute = 'complete'
+  if x.is_part_time:
+    x.to_add["part time"].is_hourly = x.is_hourly
+  else:
+    x.to_add["full time"].is_hourly = x.is_hourly
+  x.to_add.gather()
+  x.to_subtract.gather()
+  x.complete = True
+---
+generic object: ALItemizedJob 
+code: | 
+  x.to_subtract[i].value 
+  x.to_subtract[i].complete = True 
+--- 
+sets:
+  - x.employer.name.first
+id: employer
+generic object: ALItemizedJob
+question: |
+  Tell us who employs you as a ${ x.source }
+fields:
+  - I am self-employed: x.is_self_employed
+    datatype: yesno
+  - Employer's name: x.employer.name.first
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - note: |
+      ---
+
+      Employer's contact information
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - Street address: x.employer.address.address
+    address autocomplete: True
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - Unit: x.employer.address.unit
+    required: False
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - City: x.employer.address.city
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - State: x.employer.address.state
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - Zip or postal code: x.employer.address.zip
+    required: False
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - Phone number: x.employer.phone_number
+    show if:
+      variable: x.is_self_employed
+      is: False
+---
+id: itemized job line items
+generic object: ALItemizedJob
+question: |
+    Enter info from your paystub for your job as a ${ x.source }
+fields:
+    - label: |
+        % if x.is_hourly:
+        What is your hourly pay for this job?
+        % else:
+        What are your wages for this job?
+        % endif
+      field: x.to_add['full time'].value
+      datatype: currency
+      show if:
+        code: x.is_part_time is False
+    - label: |
+        % if x.is_hourly:
+        What is your hourly pay for this job?
+        % else:
+        What are your wages for this job?
+        % endif
+      field: x.to_add['part time'].value
+      datatype: currency
+      show if:
+        code: x.is_part_time is True
+    - label: What is your overtime pay for this job?
+      field: x.to_add['overtime'].value
+      datatype: currency
+    - label: What is your tip pay for this job?
+      field: x.to_add['tips'].value
+      datatype: currency
+    - Does the job have other incomes?: x.to_add.there_is_another
+      datatype: yesnoradio
+---
+id: itemized job deductions
+generic object: ALItemizedJob
+question: |
+    Enter info from your paystub for your job as a ${ x.source }
+fields:
+  - What is your federal tax amount?: x.to_subtract['federal_taxes'].value
+    datatype: currency
+    required: False
+  - What do you pay for insurance?: x.to_subtract['insurance'].value
+    datatype: currency
+    required: False
+  - Does the job have other deductions?: x.to_subtract.there_is_another
+    datatype: yesnoradio
