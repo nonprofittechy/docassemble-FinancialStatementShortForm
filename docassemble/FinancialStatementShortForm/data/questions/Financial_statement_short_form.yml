@@ -77,6 +77,7 @@ objects:
   - attoneys: ALPeopleList
   - jobs: ALItemizedJobList.using(complete_attribute='complete', ask_number=True)
   - other_incomes: ALIncomeList
+  - base_pay_job_list: ALItemizedJobList.using(auto_gather=False)
 ---
 sections:
   - review_Financial_statement_short_form: Review your answers
@@ -127,19 +128,21 @@ code: |
   #need to add x.which_tips_commissions
   review_jobs
   
+  set_base_pay
+  
   set_progress(44)
     
-  list_incomes
-  review_income_screen
-  
-  set_progress(55)
-  creditors.gather()
-
-    
-  set_progress(66)
-  
-  exemptions_federal_income_tax
-  assets_real_estate_address
+  #list_incomes
+  #review_income_screen
+  #
+  #set_progress(55)
+  #creditors.gather()
+  #
+  #  
+  #set_progress(66)
+  #
+  #exemptions_federal_income_tax
+  #assets_real_estate_address
   interview_order_Financial_statement_short_form = True
 ---
 ###################### Main order ######################
@@ -875,6 +878,29 @@ objects:
   - al_user_bundle: ALDocumentBundle.using(elements=[Financial_statement_short_form_post_interview_instructions,Financial_statement_short_form_attachment], filename="Financial_statement_short_form_package.pdf", title="All forms to download for your records", enabled=True)
   - al_court_bundle: ALDocumentBundle.using(elements=[Financial_statement_short_form_attachment], filename="Financial_statement_short_form_package.pdf", title="All forms to download for your records", enabled=True)
 ---
+## base pay
+code: |
+  #  base_pay_job_list.clear()
+  #  log(1,"console")
+  #  
+  for job in jobs:
+    log(2,"console")
+  
+    if not job.is_part_time and not job.is_hourly:
+      base_pay_is_salary = True
+      log(3,"console")
+    if not job.is_part_time and job.is_hourly:
+      base_pay_is_wages = True
+      log(4,"console")
+    #if not job.is_part_time:
+    #  base_pay_job_list.append(job)
+    #  log(5,"console")
+    #  
+    #log(6,"console")
+  
+  log(7,"console")
+  set_base_pay = True
+---
 attachments:
   - name: Financial statement short form post interview instructions
     filename: Post-interview-instructions     
@@ -977,11 +1003,11 @@ attachments:
       - "has_health_insurance_yes": ${ users[0].health_insurance }
       - "has_health_insurance_no": ${ not users[0].health_insurance }
       - "health_insurance_provider": ${ users[0].health_insurance_provider }
-      - "base_pay_is_salary": ${ base_pay_is_salary }
-      - "base_pay_is_wages": ${ base_pay_is_wages }
-      - "income_base_pay_amount": ${ currency(income_base_pay_amount) }
+      - "base_pay_is_salary": ${ True if True in [not job.is_part_time and not job.is_hourly for job in jobs] else False }
+      - "base_pay_is_wages": ${ True if True in [job.is_part_time and not job.is_hourly for job in jobs] else False }
+      - "income_base_pay_amount": ${ currency(jobs.total(times_per_year=52, source=["full time"])) }
       - "income_overtime_amount": ${ currency(income_overtime_amount) }
-      - "income_part_time_amount": ${ currency(income_part_time_amount) }
+      - "income_part_time_amount": ${ currency(jobs.total(times_per_year=52, source=["part time"])) }
       - "income_self_employment_amount": ${ currency(income_self_employment_amount) }
       - "income_tips_amount": ${ currency(income_tips_amount) }
       - "bonuses": ${ bonuses }
