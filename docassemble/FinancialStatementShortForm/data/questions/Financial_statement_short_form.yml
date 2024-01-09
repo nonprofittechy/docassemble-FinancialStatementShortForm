@@ -1,10 +1,11 @@
-modules:
-  - docassemble.income.income
 ---
 include:
   - docassemble.AssemblyLine:al_package.yml
   - docassemble.ALMassachusetts:al_massachusetts.yml
   - docassemble.MassAccess:massaccess.yml
+  - docassemble.ALToolbox:al_income.yml
+  - docassemble.ALAffidavitOfIndigency:affidavit_of_indigency_supplement_body.yml
+  - review.yml
 ---
 metadata:
   title: |
@@ -33,7 +34,7 @@ code: |
       "generated on": "2022-01-16",
       "title": "Probate and Family Court Financial statement (short form) (CJD 301S)",
       "short title": "Financial Statement (short form)",
-      "description": "You must file this form in all cases in iteh Probate and Family Court where money or support is an issue and your annual income is less than $75,000.",
+      "description": "You must file this form in all cases in the Probate and Family Court where money or support is an issue and your annual income is less than $75,000.",
       "original_form": "https://courtforms.jud.state.ma.us/publicforms/PFC0002",
       "allowed courts": [
         "Probate and Family Court",
@@ -68,11 +69,14 @@ code: |
 ---
 objects:
   - users: ALPeopleList.using(ask_number=True,target_number=1)
+  - other_parties: ALPeopleList.using(ask_number=True,target_number=1)
   - employers: JobList.using(ask_number=True,target_number=employer_number,
         complete_attribute='period')
   - creditors: ALPeopleList.using(ask_number=True,target_number=creditor_number,
         complete_attribute='weekly_payment')
   - attoneys: ALPeopleList
+  - jobs: ALItemizedJobList.using(complete_attribute='complete', ask_number=True)
+  - other_incomes: ALIncomeList
 ---
 sections:
   - review_Financial_statement_short_form: Review your answers
@@ -94,36 +98,42 @@ code: |
     
   set_progress(11)
   user_ask_role
-  trial_court.division
-  docket_number
-  plaintiffs.gather()
-  defendants.gather()
+  
   users.gather()
-  set_parts(subtitle=str(users))
-  set_progress(22)
   users[0].address.address
   users[0].phone_number
+  set_progress(22)
+  users[0].birthdate
+  users[0].ssn
+  users[0].health_insurance
+  set_parts(subtitle=str(users))
   
   if user_represented:
     attorneys[0].address
     attorneys[0].phone_number
     attorney_signature_date
+  set_progress(33)
+  
+  other_parties.gather()
     
+  trial_court.division
+  docket_number
+  
   signature_date
   
   set_progress(33)
+  
+  jobs.gather()
+  #need to add x.which_tips_commissions
+  review_jobs
+  
   set_progress(44)
-  
-  users_social_security_number
-  if employment_type['employed']:
-    employers.gather()
-  base_pay_is_salary
-  
-  creditors.gather()
-  
-  
+    
+  list_incomes
+  review_income_screen
   
   set_progress(55)
+  creditors.gather()
 
     
   set_progress(66)
@@ -150,6 +160,90 @@ code: |
   users[0].signature
   Financial_statement_short_form_download
 ---
+id: is the user the plaintiff or defendant?
+question: |
+  Did you file the petition for divorce?
+fields: 
+  - no label: user_ask_role
+    datatype: yesnoradio
+  - note: |
+      Okay, you are the **Plaintiff** in this case. The other 
+      side is the **Defendant**.
+    show if:
+      variable: user_ask_role
+      is: True
+  - note: |
+      Okay, you are the **Defendant** in this case. The other 
+      side is the **Plaintiff**.
+    show if:
+      variable: user_ask_role
+      is: False
+---
+sets:
+  - other_parties[i].name.first
+  - other_parties[i].name.last
+  - other_parties[i].name.middle
+  - other_parties[i].name.suffix
+id: names of opposing parties
+question: |
+  % if user_started_case:
+  Name of ${ ordinal(i) } **defendant** in this
+  matter
+  % else:
+  Name of ${ ordinal(i) } **plaintiff** in this matter
+  % endif
+fields:
+  - code: |
+      other_parties[i].name_fields(person_or_business='person')
+---
+sets:
+  - x.employer.name.first
+id: employer
+generic object: ALItemizedJob
+question: |
+  Tell us who employs you as a ${ x.source }
+fields:
+  - I am self-employed: x.is_self_employed
+    datatype: yesno
+  - Employer's name: x.employer.name.first
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - note: |
+      ---
+
+      Employer's contact information
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - Street address: x.employer.address.address
+    address autocomplete: True
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - Unit: x.employer.address.unit
+    required: False
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - City: x.employer.address.city
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - State: x.employer.address.state
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - Zip or postal code: x.employer.address.zip
+    required: False
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - Phone number: x.employer.phone_number
+    show if:
+      variable: x.is_self_employed
+      is: False
+---
 comment: |
   This question is used to introduce your interview. Please customize
 id: Probate_and_Family_Court_Financial_statement_short_form_CJD_301S
@@ -174,6 +268,19 @@ subquestion: |
 fields:  
   - "Your annual income before taxes": gross_annual_income
     datatype: currency 
+---
+id: docket number
+question: |
+  What is the docket number for your case?
+fields:
+  - I don't know the docket number: dont_know_docket_number
+    datatype: yesno    
+  - Docket number: docket_number
+    hide if: dont_know_docket_number
+validation code: |
+  # This should be safe to 
+  if dont_know_docket_number:
+    docket_number = ' ' 
 ---
 id: Kickout more than 75,000 
 question: |
@@ -304,25 +411,38 @@ fields:
     datatype: integer
     code: |
       period_list()
-
 ---
-id: About you
+id: birthdate
 question: |
-  About you
+  What is your birthdate?
 fields:
-  - "Social Security Number": users_social_security_number
-    maxlength: 19
-  - "Date of birth": users_date_of_birth
-    datatype: date
-  - "Number of children": users_children_number
-    datatype: number
-  - "Occupation": users_occupation
-    maxlength: 32
-  - "I have health insurance": has_health_insurance
-    datatype: yesno
-  - "Health insurance provider": health_insurance_provider
-    show if: has_health_insurance
+  - "Date of birth": users[0].birthdate
+    datatype: BirthDate
+---
+id: health insurance
+question: |
+  Do you have health insurance?
+fields:
+  - "I have health insurance": users[0].health_insurance
+    datatype: yesnoradio
+  - "Health insurance provider": users[0].health_insurance_provider
+    show if: users[0].health_insurance
     maxlength: 58
+---
+id: ssn
+question: |
+  What are the last 4 digits of your Social Security Number?
+fields: 
+  - Last 4 Digits of SSN: users[0].ssn
+    datatype: integer
+    required: False
+    maxlength: 4
+    minlength: 4
+---
+#  - "Number of children": users_children_number
+#    datatype: number
+#  - "Occupation": users_occupation
+#    maxlength: 32
 ---
 id:  your weekly income
 question: |
@@ -728,689 +848,6 @@ continue button field: Financial_statement_short_form_preview_question
 code: |
   signature_fields = ['attorneys[0].signature', 'users[0].signature']
 ---
-id: Financial statement short form review screen
-event: review_Financial_statement_short_form
-question: |
-  Review your answers
-review:
-  - Edit: users_social_security_number
-    button: |
-      **Your Social Security Number**:
-      ${ users_social_security_number }
-  - Edit: users_date_of_birth
-    button: |
-      **Your date of birth**:
-      ${ users_date_of_birth }
-  - Edit: users_children_number
-    button: |
-      **Number of children**:
-      ${ users_children_number }
-  - Edit: users_occupation
-    button: |
-      **Occupation**:
-      ${ users_occupation }
-  - Edit: has_health_insurance
-    button: |
-      **Health insurance**:
-      ${ word(yesno(has_health_insurance)) }
-  - Edit: health_insurance_provider
-    button: |
-      **Health insurance provider**:
-      ${ health_insurance_provider }
-  - Edit: base_pay_is_salary
-    button: |
-      **Salary**:
-      ${ word(yesno(base_pay_is_salary)) }
-  - Edit: base_pay_is_wages
-    button: |
-      **Wages**:
-      ${ word(yesno(base_pay_is_wages)) }
-  - Edit: income_base_pay_amount
-    button: |
-      **Base pay**:
-      ${ currency(income_base_pay_amount) }
-  - Edit: income_overtime_amount
-    button: |
-      **Overtime**:
-      ${ currency(income_overtime_amount) }
-  - Edit: income_part_time_amount
-    button: |
-      **Part-time**:
-      ${ currency(income_part_time_amount) }
-  - Edit: income_self_employment_amount
-    button: |
-      **Income from self-employment**:
-      ${ currency(income_self_employment_amount) }
-  - Edit: income_tips_amount
-    button: |
-      **Tips**:
-      ${ currency(income_tips_amount) }
-  - Edit: bonuses
-    button: |
-      **Bonuses**:
-      ${ word(yesno(bonuses)) }
-  - Edit: commissions
-    button: |
-      **Commissions**:
-      ${ word(yesno(commissions)) }
-  - Edit: income_commissions_bonuses_amount
-    button: |
-      **Income  from commissions and bonuses**:
-      ${ currency(income_commissions_bonuses_amount) }
-  - Edit: interest
-    button: |
-      **Interest**:
-      ${ word(yesno(interest)) }
-  - Edit: dividends
-    button: |
-      **Dividends**:
-      ${ word(yesno(dividends)) }
-  - Edit: income_dividends_interest_amount
-    button: |
-      **Income from dividends and interest**:
-      ${ currency(income_dividends_interest_amount) }
-  - Edit: trusts
-    button: |
-      **Trusts**:
-      ${ word(yesno(trusts)) }
-  - Edit: annuities
-    button: |
-      **Annuities**:
-      ${ word(yesno(annuities)) }
-  - Edit: income_trusts_annuities_amount
-    button: |
-      **Income from trusts and annuities**:
-      ${ currency(income_trusts_annuities_amount) }
-  - Edit: pensions
-    button: |
-      **Pensions**:
-      ${ word(yesno(pensions)) }
-  - Edit: retirement_funds
-    button: |
-      **Retirement funds**:
-      ${ word(yesno(retirement_funds)) }
-  - Edit: income_pensions_retirement_amount
-    button: |
-      **Income from pensions and retirement accounts**:
-      ${ currency(income_pensions_retirement_amount) }
-  - Edit: income_social_security_amount
-    button: |
-      **Social Security**:
-      ${ currency(income_social_security_amount) }
-  - Edit: disability
-    button: |
-      **Disability**:
-      ${ word(yesno(disability)) }
-  - Edit: unemployment_insurance
-    button: |
-      **Unemployment Insurance**:
-      ${ word(yesno(unemployment_insurance)) }
-  - Edit: workers_compensation
-    button: |
-      **Workers Compensation**:
-      ${ word(yesno(workers_compensation)) }
-  - Edit: income_disability_ui_workers_comp_amount
-    button: |
-      **Income from disability, Unemployment and Workers\' Comp**:
-      ${ currency(income_disability_ui_workers_comp_amount) }
-  - Edit: income_public_benefits_amount
-    button: |
-      **Income from public benefits**:
-      ${ currency(income_public_benefits_amount) }
-  - Edit: child_support
-    button: |
-      **Child support**:
-      ${ word(yesno(child_support)) }
-  - Edit: alimony_actually_received
-    button: |
-      **Alimony actually received**:
-      ${ word(yesno(alimony_actually_received)) }
-  - Edit: income_child_support_alimony_amount
-    button: |
-      **Income from child support and alimony**:
-      ${ currency(income_child_support_alimony_amount) }
-  - Edit: income_rental_amount
-    button: |
-      **Rental income**:
-      ${ currency(income_rental_amount) }
-  - Edit: income_royalties_amount_amount
-    button: |
-      **Income from royalties**:
-      ${ currency(income_royalties_amount_amount) }
-  - Edit: income_household_member_contributions_amount
-    button: |
-      **Household member contributions**:
-      ${ currency(income_household_member_contributions_amount) }
-  - Edit: income_other1_amount
-    button: |
-      **Income1 other amount**:
-      ${ currency(income_other1_amount) }
-  - Edit: income_other2_amount
-    button: |
-      **Income2 other amount**:
-      ${ currency(income_other2_amount) }
-  - Edit: income_other_sources
-    button: |
-      **Income other sources**:
-      > ${ single_paragraph(income_other_sources) }
-  - Edit: total_gross_weekly_income_amount
-    button: |
-      **Total gross weekly income**:
-      ${ currency(total_gross_weekly_income_amount) }
-  - Edit: exemptions_federal_income_tax
-    button: |
-      **Number of exemptions for federal income tax**:
-      ${ exemptions_federal_income_tax }
-  - Edit: deductions_federal_income_tax_amount
-    button: |
-      **Deductions from federal income tax**:
-      ${ currency(deductions_federal_income_tax_amount) }
-  - Edit: exemptions_state_income_tax
-    button: |
-      **Number of exemptions for state income tax**:
-      ${ exemptions_state_income_tax }
-  - Edit: deductions_state_income_tax_amount
-    button: |
-      **Deductions from state income tax**:
-      ${ currency(deductions_state_income_tax_amount) }
-  - Edit: deductions_fica_medicare_amount
-    button: |
-      **Deductions for FICA or Medicare**:
-      ${ currency(deductions_fica_medicare_amount) }
-  - Edit: deductions_medical_insurance_amount
-    button: |
-      **Deductions for health insurance**:
-      ${ currency(deductions_medical_insurance_amount) }
-  - Edit: deductions_union_dues_amount
-    button: |
-      **Deductions for union dues**:
-      ${ currency(deductions_union_dues_amount) }
-  - Edit: deductions_total_amount
-    button: |
-      **Total deductions**:
-      ${ currency(deductions_total_amount) }
-  - Edit: adjusted_net_weekly_income_amount
-    button: |
-      **Adjusted net weekly income**:
-      ${ currency(adjusted_net_weekly_income_amount) }
-  - Edit: deduction_loan_repayment_yes
-    button: |
-      **Deduction for repaying loans**:
-      ${ word(yesno(deduction_loan_repayment_yes)) }
-  - Edit: deduction_savings_yes
-    button: |
-      **Deduction for savings**:
-      ${ word(yesno(deduction_savings_yes)) }
-  - Edit: deductions_credit_union_loan_savings_amount
-    button: |
-      **Deductions for credit union, loans and savings**:
-      ${ currency(deductions_credit_union_loan_savings_amount) }
-  - Edit: deductions_savings_amount
-    button: |
-      **Deductions for savings**:
-      ${ currency(deductions_savings_amount) }
-  - Edit: deductions_retirement_amount
-    button: |
-      **Deductions for retirement**:
-      ${ currency(deductions_retirement_amount) }
-  - Edit: other_deductions_specifics
-    button: |
-      **Other deductions**:
-      ${ other_deductions_specifics }
-  - Edit: deductions_child_support_compensation_401k_etc_amount
-    button: |
-      **Deductions for child support compensation 401k etc**:
-      ${ currency(deductions_child_support_compensation_401k_etc_amount) }
-  - Edit: other_deductions_total_amount
-    button: |
-      **Other deductions total**:
-      ${ currency(other_deductions_total_amount) }
-  - Edit: net_weekly_income_amount
-    button: |
-      **Net weekly income**:
-      ${ currency(net_weekly_income_amount) }
-  - Edit: gross_yearly_income_last_year_amount
-    button: |
-      **Gross yearly income last year**:
-      ${ currency(gross_yearly_income_last_year_amount) }
-  - Edit: years_paid_into_social_security
-    button: |
-      **Years paid into social security**:
-      ${ years_paid_into_social_security }
-  - Edit: expense_life_insurance_amount
-    button: |
-      **Life insurance**:
-      ${ currency(expense_life_insurance_amount) }
-  - Edit: expense_rent_amount
-    button: |
-      **Rent**:
-      ${ currency(expense_rent_amount) }
-  - Edit: expense_medical_insurance_amount
-    button: |
-      **Health insurance not deducted from your pay**:
-      ${ currency(expense_medical_insurance_amount) }
-  - Edit: expense_home_insurance_amount
-    button: |
-      **Homeowner\'s or renter\'s insurance**:
-      ${ currency(expense_home_insurance_amount) }
-  - Edit: expense_medical_uninsured_amount
-    button: |
-      **Uninsured medical expenses**:
-      ${ currency(expense_medical_uninsured_amount) }
-  - Edit: expense_maintenance_amount
-    button: |
-      **Maintenance**:
-      ${ currency(expense_maintenance_amount) }
-  - Edit: expense_heat_amount
-    button: |
-      **Heat**:
-      ${ currency(expense_heat_amount) }
-  - Edit: expense_toiletries_amount
-    button: |
-      **Toiletries**:
-      ${ currency(expense_toiletries_amount) }
-  - Edit: expense_electricity_gas_amount
-    button: |
-      **Electricity and gas**:
-      ${ currency(expense_electricity_gas_amount) }
-  - Edit: expense_motor_vehicles_amount
-    button: |
-      **Motor vehicles expense**:
-      ${ currency(expense_motor_vehicles_amount) }
-  - Edit: expense_phone_amount
-    button: |
-      **Phone**:
-      ${ currency(expense_phone_amount) }
-  - Edit: expense_motor_vehicle_payment_amount
-    button: |
-      **Car payment**:
-      ${ currency(expense_motor_vehicle_payment_amount) }
-  - Edit: expense_water_sewer_amount
-    button: |
-      **Water and sewer**:
-      ${ currency(expense_water_sewer_amount) }
-  - Edit: expense_child_care_amount
-    button: |
-      **Child care**:
-      ${ currency(expense_child_care_amount) }
-  - Edit: expense_food_amount
-    button: |
-      **Food**:
-      ${ currency(expense_food_amount) }
-  - Edit: expense_house_supplies_amount
-    button: |
-      **House supplies**:
-      ${ currency(expense_house_supplies_amount) }
-  - Edit: expense_other_amount
-    button: |
-      **Other expense**:
-      ${ currency(expense_other_amount) }
-  - Edit: expense_others_amount
-    button: |
-      **Other expenses**:
-      ${ currency(expense_others_amount) }
-  - Edit: expense_laundry_cleaning_amount
-    button: |
-      **Laundry and cleaning**:
-      ${ currency(expense_laundry_cleaning_amount) }
-  - Edit: expenses_other_explanation
-    button: |
-      **Other expenses**:
-      ${ expenses_other_explanation }
-  - Edit: expense_clothing_amount
-    button: |
-      **Clothing**:
-      ${ currency(expense_clothing_amount) }
-  - Edit: total_weekly_expenses_amount
-    button: |
-      **Total weekly expenses**:
-      ${ currency(total_weekly_expenses_amount) }
-  - Edit: legal_fees_amount
-    button: |
-      **Legal fees**:
-      ${ currency(legal_fees_amount) }
-  - Edit: legal_fees_incurred_to_date_against_retainer_amount
-    button: |
-      **Legal fees incurred to date against retainer amount**:
-      ${ currency(legal_fees_incurred_to_date_against_retainer_amount) }
-  - Edit: legal_fees_total_miniimum_amount
-    button: |
-      **Legal fees minimum**:
-      ${ currency(legal_fees_total_miniimum_amount) }
-  - Edit: legal_fees_total_maximum_amount
-    button: |
-      **Legal fees maximum**:
-      ${ currency(legal_fees_total_maximum_amount) }
-  - Edit: assets_real_estate_address
-    button: |
-      **Real estate address**:
-      ${ assets_real_estate_address }
-  - Edit: assets_real_estate_name_on_title
-    button: |
-      **Name on title**:
-      ${ assets_real_estate_name_on_title }
-  - Edit: assets_real_estate_fair_market_value
-    button: |
-      **Fair market value**:
-      ${ currency(assets_real_estate_fair_market_value) }
-  - Edit: assets_real_estate_mortgage_value
-    button: |
-      **Mortgage value**:
-      ${ currency(assets_real_estate_mortgage_value) }
-  - Edit: assets_real_estate_equity_value
-    button: |
-      **Equity**:
-      ${ currency(assets_real_estate_equity_value) }
-  - Edit: assets_motor_vehicle_fair_market_value
-    button: |
-      **Motor vehicle fair market value**:
-      ${ currency(assets_motor_vehicle_fair_market_value) }
-  - Edit: assets_motor_vehicle_loan_amount
-    button: |
-      **Motor vehicle loan amount**:
-      ${ currency(assets_motor_vehicle_loan_amount) }
-  - Edit: assets_motor_vehicle_equity_value
-    button: |
-      **Motor vehicle equity**:
-      ${ currency(assets_motor_vehicle_equity_value) }
-  - Edit: assets_motor_vehicle1_fair_market_value
-    button: |
-      **Motor vehicle1 fair market value**:
-      ${ currency(assets_motor_vehicle1_fair_market_value) }
-  - Edit: assets_motor_vehicle1_loan_amount
-    button: |
-      **Motor vehicle1 loan**:
-      ${ currency(assets_motor_vehicle1_loan_amount) }
-  - Edit: assets_motor_vehicle1_equity_value
-    button: |
-      **Motor vehicle1 equity**:
-      ${ currency(assets_motor_vehicle1_equity_value) }
-  - Edit: assets_retirement_plan_value
-    button: |
-      **Value of your Retirement plan**:
-      ${ currency(assets_retirement_plan_value) }
-  - Edit: assets_retirement_plan1_value
-    button: |
-      **Value of your retirement plan1**:
-      ${ currency(assets_retirement_plan1_value) }
-  - Edit: assets_retirement_plan2_value
-    button: |
-      **Value of your  retirement plan2**:
-      ${ currency(assets_retirement_plan2_value) }
-  - Edit: assets_retirement_plan_name_and_account_number
-    button: |
-      **Retirement plan name and account number**:
-      > ${ single_paragraph(assets_retirement_plan_name_and_account_number) }
-  - Edit: assets_tax_deferred_annuity_plan_value
-    button: |
-      **Deferred annuity plan value**:
-      ${ currency(assets_tax_deferred_annuity_plan_value) }
-  - Edit: assets_life_insurance
-    button: |
-      **Life insurance**:
-      ${ currency(assets_life_insurance) }
-  - Edit: assets_account_name_and_number
-    button: |
-      **Account name and number**:
-      ${ assets_account_name_and_number }
-  - Edit: assets_account_value
-    button: |
-      **Account value**:
-      ${ currency(assets_account_value) }
-  - Edit: assets_account_name_and_number1
-    button: |
-      **Account name and number1**:
-      ${ assets_account_name_and_number1 }
-  - Edit: assets_account_value1
-    button: |
-      **Account value1**:
-      ${ assets_account_value1 }
-  - Edit: assets_account_name_and_number2
-    button: |
-      **Account name and number2**:
-      ${ assets_account_name_and_number2 }
-  - Edit: assets_account_value2
-    button: |
-      **Account value2**:
-      ${ assets_account_value2 }
-  - Edit: assets_stocks_and_bonds
-    button: |
-      **Assets stocks and bonds**:
-      ${ assets_stocks_and_bonds }
-  - Edit: assets_stocks_and_bonds_value
-    button: |
-      **Assets stocks and bonds value**:
-      ${ currency(assets_stocks_and_bonds_value) }
-  - Edit: assets_stocks_and_bonds1
-    button: |
-      **Assets stocks and bonds1**:
-      ${ assets_stocks_and_bonds1 }
-  - Edit: assets_stocks_and_bonds_value1
-    button: |
-      **Assets stocks and bonds value1**:
-      ${ assets_stocks_and_bonds_value1 }
-  - Edit: total_assets_value
-    button: |
-      **Total assets value**:
-      ${ currency(total_assets_value) }
-  - Edit: liabilities_total_due_value
-    button: |
-      **Liabilities total due value**:
-      ${ currency(liabilities_total_due_value) }
-  - Edit: liabilities_total_weekly_payment_amount
-    button: |
-      **Liabilities total weekly payment amount**:
-      ${ currency(liabilities_total_weekly_payment_amount) }
-  - Edit: attorney_signature_date
-    button: |
-      **Date of attorney signature**:
-      ${ attorney_signature_date }
-  - Edit: attorney_bbo_number
-    button: |
-      **Attorney bbo number**:
-      ${ attorney_bbo_number }
-  - Edit: trial_court
-    button: |
-      **trial_court**
-
-      % if defined("trial_court.division"):
-      * division: ${ trial_court.division }
-      % endif
-  - Edit: docket_number
-    button: |
-      **docket_number**:
-      ${ docket_number }
-  - Edit: plaintiffs.revisit
-    button: |
-      **Plaintiffs**
-
-      % for item in plaintiffs:
-        * ${ item }
-      % endfor
-  - Edit: defendants.revisit
-    button: |
-      **Defendants**
-
-      % for item in defendants:
-        * ${ item }
-      % endfor
-  - Edit: users.revisit
-    button: |
-      **Users**
-
-      % for item in users:
-        * ${ item }
-      % endfor
-  - Edit: creditors.revisit
-    button: |
-      **Creditors**
-
-      % for item in creditors:
-        * ${ item }
-      % endfor
-  - Edit: signature_date
-    button: |
-      **signature_date**:
-      ${ signature_date }
-  - Edit: attorneys.revisit
-    button: |
-      **Attorneys**
-
-      % for item in attorneys:
-        * ${ item }
-      % endfor
-  - Edit: employers.revisit
-    button: |
-      **Employers**
-
-      % for item in employers:
-        * ${ item }
-      % endfor
----
-continue button field: plaintiffs.revisit
-question: |
-  Edit plaintiffs
-subquestion: |
-  ${ plaintiffs.table }
-
-  ${ plaintiffs.add_action() }
----
-table: plaintiffs.table
-rows: plaintiffs
-columns:
-  - Name: |
-      row_item.name.full() if defined("row_item.name.first") else ""
-edit:
-  - name.first
-confirm: True
-
----
-continue button field: defendants.revisit
-question: |
-  Edit defendants
-subquestion: |
-  ${ defendants.table }
-
-  ${ defendants.add_action() }
----
-table: defendants.table
-rows: defendants
-columns:
-  - Name: |
-      row_item.name.full() if defined("row_item.name.first") else ""
-edit:
-  - name.first
-confirm: True
-
----
-continue button field: users.revisit
-question: |
-  Edit users
-subquestion: |
-  ${ users.table }
-
-  ${ users.add_action() }
----
-table: users.table
-rows: users
-columns:
-  - Name: |
-      row_item.name.full() if defined("row_item.name.first") else ""
-  - Address: |
-      row_item.address.block() if defined("row_item.address.city") else ""
-  - Phone number: |
-      row_item.phone_number if defined("row_item.phone_number") else ""
-  - Signature: |
-      row_item.signature if defined("row_item.signature") else ""
-edit:
-  - name.first
-  - address.city
-  - phone_number
-  - signature
-confirm: True
-
----
-continue button field: creditors.revisit
-question: |
-  Edit creditors
-subquestion: |
-  ${ creditors.table }
-
-  ${ creditors.add_action() }
----
-table: creditors.table
-rows: creditors
-columns:
-  - Creditor's name: |
-      row_item.name if defined("row_item.name") else ""
-  - Nature of debt: |
-      row_item.nature_of_debt if defined("row_item.nature_of_debt") else ""
-  - Date incurred:  |
-      row_item.date_incurred if defined("row_item.date_incurred") else ""
-  - Amount due:  |
-      row_item.amount_due if defined("row_item.amount_due") else ""
-  - Weekly payment:  |
-      row_item.weekly_payment if defined("row_item.weekly_payment") else ""
-edit:
-  - name
-  - nature_of_debt
-  - date_incurred
-  - amount_due
-  - weekly_payment
-confirm: True
-
----
-continue button field: attorneys.revisit
-question: |
-  Edit attorneys
-subquestion: |
-  ${ attorneys.table }
-
-  ${ attorneys.add_action() }
----
-table: attorneys.table
-rows: attorneys
-columns:
-  - Signature: |
-      row_item.signature if defined("row_item.signature") else ""
-  - Name: |
-      row_item.name.full() if defined("row_item.name.first") else ""
-  - Address: |
-      row_item.address.block() if defined("row_item.address.city") else ""
-  - Phone number: |
-      row_item.phone_number if defined("row_item.phone_number") else ""
-edit:
-  - signature
-  - name.first
-  - address.city
-  - phone_number
-confirm: True
-
----
-continue button field: employers.revisit
-question: |
-  Edit employers
-subquestion: |
-  ${ employers.table }
-
-  ${ employers.add_action() }
----
-table: employers.table
-rows: employers
-columns:
-  - Address: |
-      row_item.address.block() if defined("row_item.address.state") else ""
-  - Name: |
-      row_item.name.full() if defined("row_item.name.first") else ""
-  - Phone number: |
-      row_item.phone_number if defined("row_item.phone_number") else ""
-edit:
-  - address.state
-  - name.first
-  - phone_number
-confirm: True
-
----
 id: download Financial_statement_short_form
 event: Financial_statement_short_form_download
 question: |
@@ -1497,19 +934,49 @@ attachments:
       - "attorney_address_state": ${ attorneys[0].address.state }
       - "attorney_address_city": ${ attorneys[0].address.city }
       - "attorney_phone_number": ${ attorneys[0].phone_number }
-      - "employers1_address_address": ${ employers[0].address.address }
-      - "employers1": ${ employers[0] }
-      - "employers1_phone_number": ${ employers[0].phone_number }
-      - "employers1_address_zip": ${ employers[0].address.zip }
-      - "employers1_address_city": ${ employers[0].address.city }
-      - "employers1_address_state": ${ employers[0].address.state }
-      - "users_social_security_number": ${ users_social_security_number }
-      - "users_date_of_birth": ${ users_date_of_birth }
+      - "employers1_address_address": |
+          % if users[0].jobs[0].is_self_employed: 
+          " "
+          % else:
+          ${ users[0].jobs[0].employer.address.address }
+          % endif
+      - "employers1":  |
+          % if users[0].jobs[0].is_self_employed: 
+          "Self employed"
+          % else:
+          ${ users[0].jobs[0].employer.name }
+          % endif
+      - "employers1_phone_number": |
+          % if users[0].jobs[0].is_self_employed: 
+          " "
+          % else:
+          ${ users[0].jobs[0].employer.phone_number }
+          % endif
+      - "employers1_address_zip": |
+          % if users[0].jobs[0].is_self_employed: 
+          " "
+          % else:
+          ${ users[0].jobs[0].employer.address.zip }
+          % endif
+      - "employers1_address_city": |
+          % if users[0].jobs[0].is_self_employed: 
+          " "
+          % else:
+          ${ users[0].jobs[0].employer.address.city }
+          % endif
+      - "employers1_address_state": |
+          % if users[0].jobs[0].is_self_employed: 
+          " "
+          % else:
+          ${ users[0].jobs[0].employer.address.state }
+          % endif
+      - "users_social_security_number": ${ users[0].ssn }
+      - "users_date_of_birth": ${ users[0].birthdate }
       - "users_children_number": ${ "{:,.2f}".format(users_children_number) }
-      - "users_occupation": ${ users_occupation }
-      - "has_health_insurance_yes": ${ has_health_insurance }
-      - "has_health_insurance_no": ${ not has_health_insurance }
-      - "health_insurance_provider": ${ health_insurance_provider }
+      - "users_occupation": ${ users[0].jobs[0].source }
+      - "has_health_insurance_yes": ${ users[0].health_insurance }
+      - "has_health_insurance_no": ${ not users[0].health_insurance }
+      - "health_insurance_provider": ${ users[0].health_insurance_provider }
       - "base_pay_is_salary": ${ base_pay_is_salary }
       - "base_pay_is_wages": ${ base_pay_is_wages }
       - "income_base_pay_amount": ${ currency(income_base_pay_amount) }
