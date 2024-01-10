@@ -102,36 +102,37 @@ fields:
     datatype: currency
     show if:
       code: x.is_part_time is True
-  - Do you earn overtime pay for this job?: x.overtime
-    datatype: yesnoradio
+  - I earn overtime pay for this job: x.overtime
+    datatype: yesno
   - What is your overtime pay for this job?: x.to_add['overtime'].value
     datatype: currency
     show if: x.overtime
     required: False
-  - Do you earn tips at this job?: x.tips
-    datatype: yesnoradio
+  - I earn tips at this job: x.tips
+    datatype: yesno
   - What is your tip pay for this job?: x.to_add['tips'].value
     datatype: currency
     show if: x.tips
     required: False
-  - Does the job have other incomes?: x.to_add.there_is_another
-    datatype: yesnoradio
+  - The job has other incomes: x.to_add.there_is_another
+    datatype: yesno
   - What is your federal tax amount?: x.to_subtract['federal_taxes'].value
     datatype: currency
     required: False
-  - Are you claiming federal tax exemptions?: x.claiming_federal_tax_exemptions
-    datatype: yesnoradio
+  - I am claiming federal tax exemptions: x.claiming_federal_tax_exemptions
+    datatype: yesno
   - Which federal tax exemptions?: x.federal_tax_exemptions
     datatype: checkboxes
     choices: 
       - Personal
       - Dependent
     show if: x.claiming_federal_tax_exemptions
+    required: False
   - What is your state tax amount?: x.to_subtract['state_taxes'].value
     datatype: currency
     required: False
-  - Are you claiming state tax exemptions?: x.claiming_state_tax_exemptions
-    datatype: yesnoradio
+  - I am claiming state tax exemptions: x.claiming_state_tax_exemptions
+    datatype: yesno
   - Which state tax exemptions?: x.state_tax_exemptions
     datatype: checkboxes
     choices: 
@@ -146,11 +147,21 @@ fields:
       - Medical/dental
       - Schedules B and D excess
     show if: x.claiming_state_tax_exemptions
-  - What do you pay for insurance?: x.to_subtract['insurance'].value
+    required: False
+  - I pay for medical insurance: x.pays_for_medical_insurance
+    datatype: yesno
+  - What do you pay for medical insurance?: x.to_subtract['medical_insurance'].value
     datatype: currency
     required: False
-  - Does the job have other deductions?: x.to_subtract.there_is_another
-    datatype: yesnoradio
+    show if: x.pays_for_medical_insurance
+  - I pay union dues: x.pays_union_dues
+    datatype: yesno
+  - What do you pay for union dues?: x.to_subtract['union_dues'].value
+    datatype: currency
+    required: False
+    show if: x.pays_union_dues
+  - The job has other deductions: x.to_subtract.there_is_another
+    datatype: yesno
 ---
 #id: itemized job deductions
 #generic object: ALItemizedJob

@@ -166,6 +166,21 @@ code: |
   users[0].signature
   Financial_statement_short_form_download
 ---
+id: your address
+sets:
+  - users[0].address.address
+  - users[0].address.city
+  - users[0].address.zip
+  - users[0].address.unit
+  - users[0].address.state
+  - users[0].address.country
+question: |
+  What is your address and phone number?
+fields:
+  - code: |
+      users[0].address_fields(country_code=AL_DEFAULT_COUNTRY, default_state=AL_DEFAULT_STATE)
+  - Phone number: users[0].phone_number
+---
 id: is the user the plaintiff or defendant?
 question: |
   Did you file the petition for divorce?
@@ -876,8 +891,18 @@ attachments:
       - "docket_number__2": ${ docket_number }
       - "docket_number__3": ${ docket_number }
       - "docket_number__3": ${ docket_number }
-      - "plaintiff": ${ plaintiffs[0] }
-      - "defendant": ${ defendants[0] }
+      - "plaintiff": |
+          % if user_ask_role:
+          ${ users[0] }
+          % else: 
+          ${ other_parties[0] }
+          % endif
+      - "defendant": |
+          % if not user_ask_role:
+          ${ users[0] }
+          % else: 
+          ${ other_parties[0] }
+          % endif
       - "users_name": ${ users[0] }
       - "users_address_zip": ${ users[0].address.zip }
       - "users_address_address": ${ users[0].address.address }
@@ -915,53 +940,24 @@ attachments:
       - "attorney_address_state": ${ attorneys[0].address.state }
       - "attorney_address_city": ${ attorneys[0].address.city }
       - "attorney_phone_number": ${ attorneys[0].phone_number }
-      - "employers1_address_address": |
-          % if users[0].jobs[0].is_self_employed: 
-          " "
-          % else:
-          ${ users[0].jobs[0].employer.address.address }
-          % endif
-      - "employers1":  |
-          % if users[0].jobs[0].is_self_employed: 
-          "Self employed"
-          % else:
-          ${ users[0].jobs[0].employer.name }
-          % endif
-      - "employers1_phone_number": |
-          % if users[0].jobs[0].is_self_employed: 
-          " "
-          % else:
-          ${ users[0].jobs[0].employer.phone_number }
-          % endif
-      - "employers1_address_zip": |
-          % if users[0].jobs[0].is_self_employed: 
-          " "
-          % else:
-          ${ users[0].jobs[0].employer.address.zip }
-          % endif
-      - "employers1_address_city": |
-          % if users[0].jobs[0].is_self_employed: 
-          " "
-          % else:
-          ${ users[0].jobs[0].employer.address.city }
-          % endif
-      - "employers1_address_state": |
-          % if users[0].jobs[0].is_self_employed: 
-          " "
-          % else:
-          ${ users[0].jobs[0].employer.address.state }
-          % endif
+      - "employers1_address_address": ${ jobs[0].employer.address.address }
+      - "employers1": ${ jobs[0].employer.name }
+      - "employers1_phone_number": ${ jobs[0].employer.phone_number }
+      - "employers1_address_zip": ${ jobs[0].employer.address.zip }
+      - "employers1_address_city": ${ jobs[0].employer.address.city }
+      - "employers1_address_state": ${ jobs[0].employer.address.state }
       - "users_social_security_number": ${ users[0].ssn }
       - "users_date_of_birth": ${ users[0].birthdate }
       - "users_children_number": ${ "{:,.2f}".format(users_children_number) }
-      - "users_occupation": ${ users[0].jobs[0].source }
+      - "users_occupation": ${ jobs[0].source }
       - "has_health_insurance_yes": ${ users[0].health_insurance }
       - "has_health_insurance_no": ${ not users[0].health_insurance }
       - "health_insurance_provider": ${ users[0].health_insurance_provider }
       - "base_pay_is_salary": ${ True if True in [not job.is_part_time and not job.is_hourly for job in jobs] else False }
-      - "base_pay_is_wages": ${ True if True in [job.is_part_time and not job.is_hourly for job in jobs] else False }
+      - "base_pay_is_wages": ${ True if True in [not job.is_part_time and job.is_hourly for job in jobs] else False }
       - "income_base_pay_amount": ${ currency(jobs.total(times_per_year=52, source=["full time"])) }
-      - "income_overtime_amount": ${ currency(jobs.total(times_per_year=52, source=["overtime"])) }
+      - "income_overtime_amount": |
+          ${ currency(jobs.total(times_per_year=52, source=["overtime"])) }
       - "income_part_time_amount": ${ currency(jobs.total(times_per_year=52, source=["part time"])) }
       - "income_self_employment_amount": ${ currency(jobs.total(times_per_year=52, source=["self employment"])) }
       - "income_tips_amount": ${ currency(jobs.total(times_per_year=52, source=["tips"])) }
@@ -992,24 +988,23 @@ attachments:
       - "income_other1_amount": ${ currency(income_other1_amount) }
       - "income_other2_amount": ${ currency(income_other2_amount) }
       - "income_other_sources": ${ income_other_sources }
-      - "total_gross_weekly_income_amount": ${ currency(total_gross_weekly_income_amount) }
+      - "total_gross_weekly_income_amount": |
+          ${ currency(jobs.gross_total(times_per_year=52)) }
       - "exemptions_federal_income_tax": |
-          % if jobs.claiming_federal_tax_exemptions:
-          ${ jobs.federal_tax_exemptions.true_values() }
-          % endif
+          ${ [job.federal_tax_exemptions.true_values() for job in jobs if job.claiming_federal_tax_exemptions] }
       - "deductions_federal_income_tax_amount": |
-          ${ currency([job.deduction_total(times_per_year=52, source='federal_taxes') for job in jobs if job.claiming_federal_tax_exemptions]) }
+          ${ currency(job.deduction_total(times_per_year=52, source='federal_taxes')) }
       - "exemptions_state_income_tax": |
-          % if jobs.claiming_state_tax_exemptions:
-          ${ jobs.state_tax_exemptions.true_values() }
-          % endif
+          ${ [job.state_tax_exemptions.true_values() for job in jobs if job.claiming_state_tax_exemptions] }
       - "deductions_state_income_tax_amount": |
-          ${ currency([job.deduction_total(times_per_year=52, source='state_taxes') for job in jobs if job.claiming_state_tax_exemptions]) }
-      - "deductions_fica_medicare_amount": ${ currency(deductions_fica_medicare_amount) }
-      - "deductions_medical_insurance_amount": ${ currency(deductions_medical_insurance_amount) }
-      - "deductions_union_dues_amount": ${ currency(deductions_union_dues_amount) }
-      - "deductions_total_amount": ${ currency(deductions_total_amount) }
-      - "adjusted_net_weekly_income_amount": ${ currency(adjusted_net_weekly_income_amount) }
+          ${ currency(job.deduction_total(times_per_year=52, source='state_taxes')) }
+      - "deductions_fica_medicare_amount": ${ currency(job.deduction_total(times_per_year=52, source='fica_medicare')) }
+      - "deductions_medical_insurance_amount": |
+          ${ currency(job.deduction_total(times_per_year=52, source='medical_insurance')) }
+      - "deductions_union_dues_amount": ${ currency(job.deduction_total(times_per_year=52, source='union_dues')) }
+      - "deductions_total_amount": ${ currency(job.deduction_total(times_per_year=52)) }
+      - "adjusted_net_weekly_income_amount": |
+          ${ currency(jobs.gross_total(times_per_year=52) - job.deduction_total(times_per_year=52)) }
       - "deduction_loan_repayment_yes": ${ deduction_loan_repayment_yes }
       - "deduction_savings_yes": ${ deduction_savings_yes }
       - "deductions_credit_union_loan_savings_amount": ${ currency(deductions_credit_union_loan_savings_amount) }
