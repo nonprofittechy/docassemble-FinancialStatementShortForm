@@ -20,6 +20,22 @@ code: |
   x.to_subtract.gather()
   x.complete = True
 ---
+generic object: ALItemizedJob 
+code: |
+  if x.to_add[i].exists:
+    x.to_add[i].value
+  else: 
+    x.to_add[i].value  
+  x.to_add[i].complete = True
+---
+generic object: ALItemizedJob 
+code: |
+  if x.to_subtract[i].exists:
+    x.to_subtract[i].value
+  else: 
+    x.to_subtract[i].value  
+  x.to_subtract[i].complete = True
+---
 #generic object: ALItemizedJob 
 #code: | 
 #  x.to_subtract.there_are_any = True
@@ -102,20 +118,26 @@ fields:
     datatype: currency
     show if:
       code: x.is_part_time is True
-  - I earn overtime pay for this job: x.overtime
+  - I earn overtime pay for this job: x.to_add['overtime'].exists
     datatype: yesno
   - What is your overtime pay for this job?: x.to_add['overtime'].value
     datatype: currency
-    show if: x.overtime
+    show if: x.to_add['overtime'].exists
     required: False
-  - I earn tips at this job: x.tips
+  - I earn tips at this job: x.to_add['tips'].exists
     datatype: yesno
   - What is your tip pay for this job?: x.to_add['tips'].value
     datatype: currency
-    show if: x.tips
+    show if: x.to_add['tips'].exists
     required: False
   - The job has other incomes: x.to_add.there_is_another
     datatype: yesno
+---
+id: itemized job deductions
+generic object: ALItemizedJob
+question: |
+  Enter info from your paystub for your job as a ${ x.source }
+fields:
   - What is your federal tax amount?: x.to_subtract['federal_taxes'].value
     datatype: currency
     required: False
@@ -148,23 +170,23 @@ fields:
       - Schedules B and D excess
     show if: x.claiming_state_tax_exemptions
     required: False
-  - I pay for medical insurance: x.pays_for_medical_insurance
+  - I pay for FICA and medicare: x.to_subtract['fica_medicare'].exists
+    datatype: yesno
+  - What do you pay for medical insurance?: x.to_subtract['fica_medicare'].value
+    datatype: currency
+    required: False
+    show if: x.to_subtract['fica_medicare'].exists
+  - I pay for medical insurance: x.to_subtract['medical_insurance'].exists
     datatype: yesno
   - What do you pay for medical insurance?: x.to_subtract['medical_insurance'].value
     datatype: currency
     required: False
-    show if: x.pays_for_medical_insurance
-  - I pay union dues: x.pays_union_dues
+    show if: x.to_subtract['medical_insurance'].exists
+  - I pay union dues: x.to_subtract['union_dues'].exists
     datatype: yesno
   - What do you pay for union dues?: x.to_subtract['union_dues'].value
     datatype: currency
     required: False
-    show if: x.pays_union_dues
+    show if: x.to_subtract['union_dues'].exists
   - The job has other deductions: x.to_subtract.there_is_another
     datatype: yesno
----
-#id: itemized job deductions
-#generic object: ALItemizedJob
-#question: |
-#    Enter info from your paystub for your job as a ${ x.source }
-#fields:
