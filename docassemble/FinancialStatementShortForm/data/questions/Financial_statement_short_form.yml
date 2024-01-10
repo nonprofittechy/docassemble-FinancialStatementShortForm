@@ -963,7 +963,7 @@ attachments:
       - "income_base_pay_amount": ${ currency(jobs.total(times_per_year=52, source=["full time"])) }
       - "income_overtime_amount": ${ currency(jobs.total(times_per_year=52, source=["overtime"])) }
       - "income_part_time_amount": ${ currency(jobs.total(times_per_year=52, source=["part time"])) }
-      - "income_self_employment_amount": ${ currency(income_self_employment_amount) }
+      - "income_self_employment_amount": ${ currency(jobs.total(times_per_year=52, source=["self employment"])) }
       - "income_tips_amount": ${ currency(jobs.total(times_per_year=52, source=["tips"])) }
       - "bonuses": ${ bonuses }
       - "commissions": ${ commissions }
@@ -993,10 +993,18 @@ attachments:
       - "income_other2_amount": ${ currency(income_other2_amount) }
       - "income_other_sources": ${ income_other_sources }
       - "total_gross_weekly_income_amount": ${ currency(total_gross_weekly_income_amount) }
-      - "exemptions_federal_income_tax": ${ "{:,.2f}".format(exemptions_federal_income_tax) }
-      - "deductions_federal_income_tax_amount": ${ currency(deductions_federal_income_tax_amount) }
-      - "exemptions_state_income_tax": ${ "{:,.2f}".format(exemptions_state_income_tax) }
-      - "deductions_state_income_tax_amount": ${ currency(deductions_state_income_tax_amount) }
+      - "exemptions_federal_income_tax": |
+          % if jobs.claiming_federal_tax_exemptions:
+          ${ jobs.federal_tax_exemptions.true_values() }
+          % endif
+      - "deductions_federal_income_tax_amount": |
+          ${ currency([job.deduction_total(times_per_year=52, source='federal_taxes') for job in jobs if job.claiming_federal_tax_exemptions]) }
+      - "exemptions_state_income_tax": |
+          % if jobs.claiming_state_tax_exemptions:
+          ${ jobs.state_tax_exemptions.true_values() }
+          % endif
+      - "deductions_state_income_tax_amount": |
+          ${ currency([job.deduction_total(times_per_year=52, source='state_taxes') for job in jobs if job.claiming_state_tax_exemptions]) }
       - "deductions_fica_medicare_amount": ${ currency(deductions_fica_medicare_amount) }
       - "deductions_medical_insurance_amount": ${ currency(deductions_medical_insurance_amount) }
       - "deductions_union_dues_amount": ${ currency(deductions_union_dues_amount) }

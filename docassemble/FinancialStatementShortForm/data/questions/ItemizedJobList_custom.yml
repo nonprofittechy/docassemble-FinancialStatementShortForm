@@ -20,10 +20,14 @@ code: |
   x.to_subtract.gather()
   x.complete = True
 ---
-generic object: ALItemizedJob 
-code: | 
-  x.to_subtract[i].value 
-  x.to_subtract[i].complete = True 
+#generic object: ALItemizedJob 
+#code: | 
+#  x.to_subtract.there_are_any = True
+#---
+#generic object: ALItemizedJob 
+#code: | 
+#  x.to_subtract[i].value 
+#  x.to_subtract[i].complete = True 
 --- 
 sets:
   - x.employer.name.first
@@ -76,47 +80,80 @@ fields:
 id: itemized job line items
 generic object: ALItemizedJob
 question: |
-    Enter info from your paystub for your job as a ${ x.source }
+  Enter info from your paystub for your job as a ${ x.source }
 fields:
-    - label: |
-        % if x.is_hourly:
-        What is your hourly pay for this job?
-        % else:
-        What are your wages for this job?
-        % endif
-      field: x.to_add['full time'].value
-      datatype: currency
-      show if:
-        code: x.is_part_time is False
-    - label: |
-        % if x.is_hourly:
-        What is your hourly pay for this job?
-        % else:
-        What are your wages for this job?
-        % endif
-      field: x.to_add['part time'].value
-      datatype: currency
-      show if:
-        code: x.is_part_time is True
-    - label: What is your overtime pay for this job?
-      field: x.to_add['overtime'].value
-      datatype: currency
-    - label: What is your tip pay for this job?
-      field: x.to_add['tips'].value
-      datatype: currency
-    - Does the job have other incomes?: x.to_add.there_is_another
-      datatype: yesnoradio
----
-id: itemized job deductions
-generic object: ALItemizedJob
-question: |
-    Enter info from your paystub for your job as a ${ x.source }
-fields:
+  - label: |
+      % if x.is_hourly:
+      What is your hourly pay for this job?
+      % else:
+      What are your wages for this job?
+      % endif
+    field: x.to_add['full time'].value
+    datatype: currency
+    show if:
+      code: x.is_part_time is False
+  - label: |
+      % if x.is_hourly:
+      What is your hourly pay for this job?
+      % else:
+      What are your wages for this job?
+      % endif
+    field: x.to_add['part time'].value
+    datatype: currency
+    show if:
+      code: x.is_part_time is True
+  - Do you earn overtime pay for this job?: x.overtime
+    datatype: yesnoradio
+  - What is your overtime pay for this job?: x.to_add['overtime'].value
+    datatype: currency
+    show if: x.overtime
+    required: False
+  - Do you earn tips at this job?: x.tips
+    datatype: yesnoradio
+  - What is your tip pay for this job?: x.to_add['tips'].value
+    datatype: currency
+    show if: x.tips
+    required: False
+  - Does the job have other incomes?: x.to_add.there_is_another
+    datatype: yesnoradio
   - What is your federal tax amount?: x.to_subtract['federal_taxes'].value
     datatype: currency
     required: False
+  - Are you claiming federal tax exemptions?: x.claiming_federal_tax_exemptions
+    datatype: yesnoradio
+  - Which federal tax exemptions?: x.federal_tax_exemptions
+    datatype: checkboxes
+    choices: 
+      - Personal
+      - Dependent
+    show if: x.claiming_federal_tax_exemptions
+  - What is your state tax amount?: x.to_subtract['state_taxes'].value
+    datatype: currency
+    required: False
+  - Are you claiming state tax exemptions?: x.claiming_state_tax_exemptions
+    datatype: yesnoradio
+  - Which state tax exemptions?: x.state_tax_exemptions
+    datatype: checkboxes
+    choices: 
+      - Personal
+      - Dependent
+      - Nonresident
+      - Part-year resident
+      - Adoption
+      - Age 65 or over
+      - Blindness
+      - Massachusetts bank interest
+      - Medical/dental
+      - Schedules B and D excess
+    show if: x.claiming_state_tax_exemptions
   - What do you pay for insurance?: x.to_subtract['insurance'].value
     datatype: currency
     required: False
   - Does the job have other deductions?: x.to_subtract.there_is_another
     datatype: yesnoradio
+---
+#id: itemized job deductions
+#generic object: ALItemizedJob
+#question: |
+#    Enter info from your paystub for your job as a ${ x.source }
+#fields:
