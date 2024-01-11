@@ -604,20 +604,20 @@ attachments:
       - "total_gross_weekly_income_amount": |
           ${ currency(jobs.gross_total(times_per_year=52)) }
       - "exemptions_federal_income_tax": |
-          ${ [job.federal_tax_exemptions.true_values() for job in jobs if job.claiming_federal_tax_exemptions] }
+          ${ comma_and_list([job.federal_tax_exemptions.true_values() for job in jobs if job.claiming_federal_tax_exemptions]) }
       - "deductions_federal_income_tax_amount": |
-          ${ currency(job.deduction_total(times_per_year=52, source='federal_taxes')) }
+          ${ currency(jobs.deduction_total(times_per_year=52, source='federal_taxes')) }
       - "exemptions_state_income_tax": |
-          ${ [job.state_tax_exemptions.true_values() for job in jobs if job.claiming_state_tax_exemptions] }
+          ${ comma_and_list([job.state_tax_exemptions.true_values() for job in jobs if job.claiming_state_tax_exemptions]) }
       - "deductions_state_income_tax_amount": |
-          ${ currency(job.deduction_total(times_per_year=52, source='state_taxes')) }
-      - "deductions_fica_medicare_amount": ${ currency(job.deduction_total(times_per_year=52, source='fica_medicare')) }
+          ${ currency(jobs.deduction_total(times_per_year=52, source='state_taxes')) }
+      - "deductions_fica_medicare_amount": ${ currency(jobs.deduction_total(times_per_year=52, source='fica_medicare')) }
       - "deductions_medical_insurance_amount": |
-          ${ currency(job.deduction_total(times_per_year=52, source='medical_insurance')) }
-      - "deductions_union_dues_amount": ${ currency(job.deduction_total(times_per_year=52, source='union_dues')) }
-      - "deductions_total_amount": ${ currency(job.deduction_total(times_per_year=52)) }
+          ${ currency(jobs.deduction_total(times_per_year=52, source='medical_insurance')) }
+      - "deductions_union_dues_amount": ${ currency(jobs.deduction_total(times_per_year=52, source='union_dues')) }
+      - "deductions_total_amount": ${ currency(jobs.deduction_total(times_per_year=52)) }
       - "adjusted_net_weekly_income_amount": |
-          ${ currency(jobs.gross_total(times_per_year=52) - job.deduction_total(times_per_year=52)) }
+          ${ currency(jobs.gross_total(times_per_year=52) - jobs.deduction_total(times_per_year=52)) }
       - "deduction_loan_repayment_yes": ${ deduction_loan_repayment_yes }
       - "deduction_savings_yes": ${ deduction_savings_yes }
       - "deductions_credit_union_loan_savings_amount": ${ currency(deductions_credit_union_loan_savings_amount) }
