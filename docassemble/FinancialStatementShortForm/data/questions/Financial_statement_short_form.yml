@@ -131,8 +131,6 @@ code: |
   #need to add x.which_tips_commissions
   review_jobs
   
-  set_base_pay
-  
   set_progress(44)
     
   #list_incomes

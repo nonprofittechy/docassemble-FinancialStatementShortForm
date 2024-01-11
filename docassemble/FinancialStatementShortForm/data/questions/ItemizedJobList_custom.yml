@@ -17,9 +17,17 @@ code: |
   else:
     x.to_add["full time"].is_hourly = x.is_hourly
   x.to_add.gather()
-  x.to_subtract["federal_taxes"].exists = True
+  x.add_required_taxes
   x.to_subtract.gather()
   x.complete = True
+---
+generic object: ALItemizedJob 
+code: |
+  x.to_subtract.initializeObject("federal_taxes")
+  x.to_subtract["federal_taxes"].exists = True
+  x.to_subtract.initializeObject("state_taxes")
+  x.to_subtract["state_taxes"].exists = True
+  x.add_required_taxes = True
 ---
 generic object: ALItemizedJob 
 code: |
