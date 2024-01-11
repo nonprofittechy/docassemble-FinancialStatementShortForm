@@ -17,29 +17,38 @@ code: |
   else:
     x.to_add["full time"].is_hourly = x.is_hourly
   x.to_add.gather()
+  x.add_required_taxes
   x.to_subtract.gather()
   x.complete = True
 ---
 generic object: ALItemizedJob 
 code: |
+  x.to_subtract.initializeObject("federal_taxes")
+  x.to_subtract["federal_taxes"].exists = True
+  x.to_subtract.initializeObject("state_taxes")
+  x.to_subtract["state_taxes"].exists = True
+  x.add_required_taxes = True
+---
+generic object: ALItemizedJob 
+code: |
   if x.to_add[i].exists:
     x.to_add[i].value
-  else: 
-    x.to_add[i].value  
+  #else: 
+  #  x.to_add[i].value = 0
   x.to_add[i].complete = True
 ---
 generic object: ALItemizedJob 
 code: |
   if x.to_subtract[i].exists:
     x.to_subtract[i].value
-  else: 
-    x.to_subtract[i].value  
+  #else: 
+  #  x.to_subtract[i].value = 0
   x.to_subtract[i].complete = True
 ---
-#generic object: ALItemizedJob 
-#code: | 
-#  x.to_subtract.there_are_any = True
-#---
+generic object: ALItemizedJob 
+code: | 
+  x.to_subtract.there_are_any = True
+---
 #generic object: ALItemizedJob 
 #code: | 
 #  x.to_subtract[i].value 
@@ -92,6 +101,28 @@ fields:
     show if:
       variable: x.is_self_employed
       is: False
+---
+generic object: ALItemizedJob
+code: |
+  if defined('x.to_add["full time"]'):
+    x.to_add["full time"].exists = True
+  else:
+    x.to_add["full time"].exists = False
+---
+generic object: ALItemizedJob
+code: |
+  if defined('x.to_add["part time"]'):
+    x.to_add["part time"].exists = True
+  else:
+    x.to_add["part time"].exists = False
+---
+generic object: ALItemizedJob
+code: |
+  x.to_subtract["federal_taxes"].exists = True
+---
+generic object: ALItemizedJob
+code: |
+  x.to_subtract["state_taxes"].exists = True
 ---
 id: itemized job line items
 generic object: ALItemizedJob
