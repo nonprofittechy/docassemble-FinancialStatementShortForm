@@ -215,17 +215,17 @@ data: !!omap
   - trusts: "Trusts"
   - annuities: "Annuities"
   - pensions: "Pensions"
-  - retirement_funds: "Retirement funds"
-  - social_security: "Social Security"
+  - retirement funds: "Retirement funds"
+  - social security: "Social Security"
   - disability: "Disability"
-  - unemployment_insurance: "Unemployment insurance" 
-  - workers_comp: "Worker's compensation"
-  - public_assistance: "Public assistance"
+  - unemployment insurance: "Unemployment insurance" 
+  - workers compensation: "Worker's compensation"
+  - public assistance: "Public assistance"
   - child support: "Child Support"
   - alimony: "Alimony (actually received)"
   - rent: "Income from real estate (rent, etc)"
   - royalties: "Royalties and other rights"
-  - household_contributions: "Contributions from household memeber(s)"
+  - household contributions: "Contributions from household memeber(s)"
   - other: "Other"
 ---
 generic object: ALIncomeList
@@ -241,3 +241,37 @@ subquestion: |
   ${ other_incomes.add_action() }
 field: review_other_incomes
 ---
+variable name: expense_terms
+data: !!omap
+  - rent or mortgage: "Rent or Mortgage (PIT)"
+  - homeowner rental insurance: "Homeowners/Tenant Insurance"
+  - maintenance repair: "Maintenance and Repair"
+  - heat: "Heat"
+  - electric or gas: "Electricity and/or Gas"
+  - telephone: "Telephone"
+  - water sewer: "Water/Sewer"
+  - food: "Food"
+  - house supplies: "House Supplies"
+  - laudry and cleaing: "Laundry and Cleaning"
+  - clothes: "Clothing"
+  - life insurance: "Life Insurance"
+  -	medical insurance: "Medical Insurance"
+  -	uninsured medicals: "Uninsured Medicals"
+  -	incidentals and toiletries: "Incidentals and Toiletries"
+  -	motor vehicle expenses: "Motor Vehicle Expenses"
+  -	motor vehicle payment: "Motor Vehicle Payment"
+  -	child care: "Child Care"
+  -	other: "Other"
+---
+generic object: ALExpenseList
+continue button field: expenses.revisit
+question: |
+  Edit expenses
+subquestion: |
+  Here is what you've told us about your expenses. You can add more or continue
+  to the next question.
+
+  ${ expenses.table }
+
+  ${ expenses.add_action() }
+field: review_expenses

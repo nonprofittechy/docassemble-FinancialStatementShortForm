@@ -80,6 +80,7 @@ objects:
   - attoneys: ALPeopleList
   - jobs: ALItemizedJobList.using(complete_attribute='complete', ask_number=True)
   - other_incomes: ALIncomeList.using(complete_attribute='complete')
+  - expenses: ALExpenseList.using(complete_attribute='complete')
 ---
 sections:
   - review_Financial_statement_short_form: Review your answers
@@ -135,8 +136,10 @@ code: |
   set_progress(44)
   
   other_incomes.gathered
-  
   review_other_incomes
+  
+  expenses.gathered
+  review_expenses
     
   #set_progress(55)
   creditors.gather()
@@ -643,28 +646,28 @@ attachments:
           ${ True if other_incomes.total(times_per_year=52, source=["pensions"]) else False }
       - "retirement_funds": |
           ${ True if other_incomes.total(times_per_year=52, source=["retirement_funds"]) else False }
-      - "income_pensions_retirement_amount": ${ currency(other_incomes.total(times_per_year=52, source=["pensions"]) + other_incomes.total(times_per_year=52, source=["retirement_funds"])) }
-      - "income_social_security_amount": ${ currency(other_incomes.total(times_per_year=52, source=["social_security"])) }
+      - "income_pensions_retirement_amount": ${ currency(other_incomes.total(times_per_year=52, source=["pensions"]) + other_incomes.total(times_per_year=52, source=["retirement funds"])) }
+      - "income_social_security_amount": ${ currency(other_incomes.total(times_per_year=52, source=["social security"])) }
       - "disability": |
           ${ True if other_incomes.total(times_per_year=52, source=["disability"]) else False }
       - "unemployment_insurance": |
-          ${ True if other_incomes.total(times_per_year=52, source=["unemployment_insurance"]) else False }
+          ${ True if other_incomes.total(times_per_year=52, source=["unemployment insurance"]) else False }
       - "workers_compensation": |
-          ${ True if other_incomes.total(times_per_year=52, source=["workers_comp"]) else False }
-      - "income_disability_ui_workers_comp_amount":  ${ currency(other_incomes.total(times_per_year=52, source=["disability"]) + other_incomes.total(times_per_year=52, source=["unemployment_insurance"]) + other_incomes.total(times_per_year=52, source=["workers_comp"])) }
+          ${ True if other_incomes.total(times_per_year=52, source=["workers compensation"]) else False }
+      - "income_disability_ui_workers_comp_amount":  ${ currency(other_incomes.total(times_per_year=52, source=["disability"]) + other_incomes.total(times_per_year=52, source=["unemployment insurance"]) + other_incomes.total(times_per_year=52, source=["workers compensation"])) }
       - "income_public_benefits_amount": | 
-          ${ currency(other_incomes.total(times_per_year=52, source=["public_assistance"])) }
+          ${ currency(other_incomes.total(times_per_year=52, source=["public assistance"])) }
       - "child_support": |
-          ${ True if other_incomes.total(times_per_year=52, source=["child_support"]) else False }
+          ${ True if other_incomes.total(times_per_year=52, source=["child support"]) else False }
       - "alimony_actually_received": |
           ${ True if other_incomes.total(times_per_year=52, source=["alimony"]) else False }
-      - "income_child_support_alimony_amount": ${ currency(other_incomes.total(times_per_year=52, source=["child_support"]) + other_incomes.total(times_per_year=52, source=["alimony"])) }
+      - "income_child_support_alimony_amount": ${ currency(other_incomes.total(times_per_year=52, source=["child support"]) + other_incomes.total(times_per_year=52, source=["alimony"])) }
       - "income_rental_amount": | 
           ${ currency(other_incomes.total(times_per_year=52, source=["rent"])) }
       - "income_royalties_amount_amount": | 
           ${ currency(other_incomes.total(times_per_year=52, source=["royalties"])) }
       - "income_household_member_contributions_amount": | 
-          ${ currency(other_incomes.total(times_per_year=52, source=["household_contributions"])) }
+          ${ currency(other_incomes.total(times_per_year=52, source=["household contributions"])) }
       - "income_other1_amount": ${ currency(income_other1_amount) }
       - "income_other2_amount": ${ currency(income_other2_amount) }
       - "income_other_sources": ${ income_other_sources }
@@ -696,28 +699,28 @@ attachments:
       - "net_weekly_income_amount": ${ currency(net_weekly_income_amount) }
       - "gross_yearly_income_last_year_amount": ${ currency(gross_yearly_income_last_year_amount) }
       - "years_paid_into_social_security": ${ "{:,.2f}".format(years_paid_into_social_security) }
-      - "expense_life_insurance_amount": ${ currency(expense_life_insurance_amount) }
-      - "expense_rent_amount": ${ currency(expense_rent_amount) }
-      - "expense_medical_insurance_amount": ${ currency(expense_medical_insurance_amount) }
-      - "expense_home_insurance_amount": ${ currency(expense_home_insurance_amount) }
-      - "expense_medical_uninsured_amount": ${ currency(expense_medical_uninsured_amount) }
-      - "expense_maintenance_amount": ${ currency(expense_maintenance_amount) }
-      - "expense_heat_amount": ${ currency(expense_heat_amount) }
-      - "expense_toiletries_amount": ${ currency(expense_toiletries_amount) }
-      - "expense_electricity_gas_amount": ${ currency(expense_electricity_gas_amount) }
-      - "expense_motor_vehicles_amount": ${ currency(expense_motor_vehicles_amount) }
-      - "expense_phone_amount": ${ currency(expense_phone_amount) }
-      - "expense_motor_vehicle_payment_amount": ${ currency(expense_motor_vehicle_payment_amount) }
-      - "expense_water_sewer_amount": ${ currency(expense_water_sewer_amount) }
-      - "expense_child_care_amount": ${ currency(expense_child_care_amount) }
-      - "expense_food_amount": ${ currency(expense_food_amount) }
-      - "expense_house_supplies_amount": ${ currency(expense_house_supplies_amount) }
-      - "expense_other_amount": ${ currency(expense_other_amount) }
+      - "expense_life_insurance_amount": ${ currency(expenses.total(times_per_year=52, source='life infurance')) }
+      - "expense_rent_amount": ${ currency(expenses.total(times_per_year=52, source='rent or mortgage')) }
+      - "expense_medical_insurance_amount": ${ currency(expenses.total(times_per_year=52, source='medical insurance')) }
+      - "expense_home_insurance_amount": ${ currency(expenses.total(times_per_year=52, source='home insurance')) }
+      - "expense_medical_uninsured_amount": ${ currency(expenses.total(times_per_year=52, source='uninsured medicals')) }
+      - "expense_maintenance_amount": ${ currency(expenses.total(times_per_year=52, source='maintenance repair')) } 
+      - "expense_heat_amount": ${ currency(expenses.total(times_per_year=52, source='heat')) } 
+      - "expense_toiletries_amount": ${ currency(expenses.total(times_per_year=52, source='incidentals and toiletries')) } 
+      - "expense_electricity_gas_amount": ${ currency(expenses.total(times_per_year=52, source='electric or gas')) }
+      - "expense_motor_vehicles_amount": ${ currency(expenses.total(times_per_year=52, source='motor vehicle expenses'))  }
+      - "expense_phone_amount": ${ currency(expenses.total(times_per_year=52, source='telephone')) }
+      - "expense_motor_vehicle_payment_amount": ${ currency(expenses.total(times_per_year=52, source='motor vehicle payment')) }
+      - "expense_water_sewer_amount": ${ currency(expenses.total(times_per_year=52, source='water sewer')) }
+      - "expense_child_care_amount": ${ currency(expenses.total(times_per_year=52, source='child care')) }
+      - "expense_food_amount": ${ currency(expenses.total(times_per_year=52, source='food')) }
+      - "expense_house_supplies_amount": ${ currency(expenses.total(times_per_year=52, source='house supplies')) }
+      - "expense_other_amount": ${ currency(expenses.total(times_per_year=52, source='other')) }
       - "expense_others_amount": ${ currency(expense_others_amount) }
-      - "expense_laundry_cleaning_amount": ${ currency(expense_laundry_cleaning_amount) }
+      - "expense_laundry_cleaning_amount": ${ currency(expenses.total(times_per_year=52, source='laudry and cleaing')) }
       - "expenses_other_explanation": ${ expenses_other_explanation }
-      - "expense_clothing_amount": ${ currency(expense_clothing_amount) }
-      - "total_weekly_expenses_amount": ${ currency(total_weekly_expenses_amount) }
+      - "expense_clothing_amount": ${ currency(expenses.total(times_per_year=52, source='clothes')) }
+      - "total_weekly_expenses_amount": ${ currency(expenses.total(times_per_year=52)) }
       - "legal_fees_amount": ${ currency(legal_fees_amount) }
       - "legal_fees_incurred_to_date_against_retainer_amount": ${ currency(legal_fees_incurred_to_date_against_retainer_amount) }
       - "legal_fees_total_miniimum_amount": ${ currency(legal_fees_total_miniimum_amount) }
