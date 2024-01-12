@@ -79,8 +79,7 @@ objects:
         complete_attribute='weekly_payment')
   - attoneys: ALPeopleList
   - jobs: ALItemizedJobList.using(complete_attribute='complete', ask_number=True)
-  - other_incomes: ALIncomeList
-  - base_pay_job_list: ALItemizedJobList.using(auto_gather=False)
+  - other_incomes: ALIncomeList.using(complete_attribute='complete')
 ---
 sections:
   - review_Financial_statement_short_form: Review your answers
@@ -131,7 +130,13 @@ code: |
   #need to add x.which_tips_commissions
   review_jobs
   
+  claiming_federal_tax_exemptions
+  
   set_progress(44)
+  
+  other_incomes.gathered
+  
+  review_other_incomes
     
   #list_incomes
   #review_income_screen
@@ -197,6 +202,37 @@ fields:
     show if:
       variable: user_ask_role
       is: False
+---
+id: claiming any tax exemptions
+question: |
+  Are you claiming any tax exemptions?
+fields:
+  - I am claiming federal tax exemptions: claiming_federal_tax_exemptions
+    datatype: yesno
+  - Which federal tax exemptions?: federal_tax_exemptions
+    datatype: checkboxes
+    choices: 
+      - Personal
+      - Dependent
+    show if: claiming_federal_tax_exemptions
+    required: False
+  - I am claiming state tax exemptions: claiming_state_tax_exemptions
+    datatype: yesno
+  - Which state tax exemptions?: state_tax_exemptions
+    datatype: checkboxes
+    choices: 
+      - Personal
+      - Dependent
+      - Nonresident
+      - Part-year resident
+      - Adoption
+      - Age 65 or over
+      - Blindness
+      - Massachusetts bank interest
+      - Medical/dental
+      - Schedules B and D excess
+    show if: claiming_state_tax_exemptions
+    required: False
 ---
 sets:
   - other_parties[i].name.first
@@ -566,49 +602,68 @@ attachments:
       - "has_health_insurance_yes": ${ users[0].health_insurance }
       - "has_health_insurance_no": ${ not users[0].health_insurance }
       - "health_insurance_provider": ${ users[0].health_insurance_provider }
-      - "base_pay_is_salary": ${ True if True in [not job.is_part_time and not job.is_hourly for job in jobs] else False }
-      - "base_pay_is_wages": ${ True if True in [not job.is_part_time and job.is_hourly for job in jobs] else False }
+      - "base_pay_is_salary": |
+          ${ True if True in [not job.is_part_time and not job.is_hourly for job in jobs] else False }
+      - "base_pay_is_wages": |
+          ${ True if True in [not job.is_part_time and job.is_hourly for job in jobs] else False }
       - "income_base_pay_amount": ${ currency(jobs.total(times_per_year=52, source=["full time"])) }
       - "income_overtime_amount": |
           ${ currency(jobs.total(times_per_year=52, source=["overtime"])) }
       - "income_part_time_amount": ${ currency(jobs.total(times_per_year=52, source=["part time"])) }
       - "income_self_employment_amount": ${ currency(jobs.total(times_per_year=52, source=["self employment"])) }
       - "income_tips_amount": ${ currency(jobs.total(times_per_year=52, source=["tips"])) }
-      - "bonuses": ${ bonuses }
-      - "commissions": ${ commissions }
-      - "income_commissions_bonuses_amount": ${ currency(income_commissions_bonuses_amount) }
-      - "interest": ${ interest }
-      - "dividends": ${ dividends }
-      - "income_dividends_interest_amount": ${ currency(income_dividends_interest_amount) }
-      - "trusts": ${ trusts }
-      - "annuities": ${ annuities }
-      - "income_trusts_annuities_amount": ${ currency(income_trusts_annuities_amount) }
-      - "pensions": ${ pensions }
-      - "retirement_funds": ${ retirement_funds }
-      - "income_pensions_retirement_amount": ${ currency(income_pensions_retirement_amount) }
-      - "income_social_security_amount": ${ currency(income_social_security_amount) }
-      - "disability": ${ disability }
-      - "unemployment_insurance": ${ unemployment_insurance }
-      - "workers_compensation": ${ workers_compensation }
-      - "income_disability_ui_workers_comp_amount": ${ currency(income_disability_ui_workers_comp_amount) }
-      - "income_public_benefits_amount": ${ currency(income_public_benefits_amount) }
-      - "child_support": ${ child_support }
-      - "alimony_actually_received": ${ alimony_actually_received }
-      - "income_child_support_alimony_amount": ${ currency(income_child_support_alimony_amount) }
-      - "income_rental_amount": ${ currency(income_rental_amount) }
-      - "income_royalties_amount_amount": ${ currency(income_royalties_amount_amount) }
-      - "income_household_member_contributions_amount": ${ currency(income_household_member_contributions_amount) }
+      - "bonuses": |
+          ${ True if jobs.total(times_per_year=52, source=["bonuses"]) else False }
+      - "commissions": |
+          ${ True if jobs.total(times_per_year=52, source=["commissions"]) else False }
+      - "income_commissions_bonuses_amount": ${ currency(jobs.total(times_per_year=52, source=["bonuses"]) + jobs.total(times_per_year=52, source=["commissions"])) }
+      - "interest": |
+          ${ True if other_incomes.total(times_per_year=52, source=["interest"]) else False }
+      - "dividends": |
+          ${ True if other_incomes.total(times_per_year=52, source=["dividends"]) else False }
+      - "income_dividends_interest_amount": ${ currency(other_incomes.total(times_per_year=52, source=["interest"]) + other_incomes.total(times_per_year=52, source=["dividends"])) }
+      - "trusts": |
+          ${ True if other_incomes.total(times_per_year=52, source=["trusts"]) else False }
+      - "annuities": |
+          ${ True if other_incomes.total(times_per_year=52, source=["annuities"]) else False }
+      - "income_trusts_annuities_amount": ${ currency(other_incomes.total(times_per_year=52, source=["trusts"]) + other_incomes.total(times_per_year=52, source=["annuities"])) }
+      - "pensions": |
+          ${ True if other_incomes.total(times_per_year=52, source=["pensions"]) else False }
+      - "retirement_funds": |
+          ${ True if other_incomes.total(times_per_year=52, source=["retirement_funds"]) else False }
+      - "income_pensions_retirement_amount": ${ currency(other_incomes.total(times_per_year=52, source=["pensions"]) + other_incomes.total(times_per_year=52, source=["retirement_funds"])) }
+      - "income_social_security_amount": ${ currency(other_incomes.total(times_per_year=52, source=["social_security"])) }
+      - "disability": |
+          ${ True if other_incomes.total(times_per_year=52, source=["disability"]) else False }
+      - "unemployment_insurance": |
+          ${ True if other_incomes.total(times_per_year=52, source=["unemployment_insurance"]) else False }
+      - "workers_compensation": |
+          ${ True if other_incomes.total(times_per_year=52, source=["workers_comp"]) else False }
+      - "income_disability_ui_workers_comp_amount":  ${ currency(other_incomes.total(times_per_year=52, source=["disability"]) + other_incomes.total(times_per_year=52, source=["unemployment_insurance"]) + other_incomes.total(times_per_year=52, source=["workers_comp"])) }
+      - "income_public_benefits_amount": | 
+          ${ currency(other_incomes.total(times_per_year=52, source=["public_assistance"])) }
+      - "child_support": |
+          ${ True if other_incomes.total(times_per_year=52, source=["child_support"]) else False }
+      - "alimony_actually_received": |
+          ${ True if other_incomes.total(times_per_year=52, source=["alimony"]) else False }
+      - "income_child_support_alimony_amount": ${ currency(other_incomes.total(times_per_year=52, source=["child_support"]) + other_incomes.total(times_per_year=52, source=["alimony"])) }
+      - "income_rental_amount": | 
+          ${ currency(other_incomes.total(times_per_year=52, source=["rent"])) }
+      - "income_royalties_amount_amount": | 
+          ${ currency(other_incomes.total(times_per_year=52, source=["royalties"])) }
+      - "income_household_member_contributions_amount": | 
+          ${ currency(other_incomes.total(times_per_year=52, source=["household_contributions"])) }
       - "income_other1_amount": ${ currency(income_other1_amount) }
       - "income_other2_amount": ${ currency(income_other2_amount) }
       - "income_other_sources": ${ income_other_sources }
       - "total_gross_weekly_income_amount": |
-          ${ currency(jobs.gross_total(times_per_year=52)) }
+          ${ currency(jobs.gross_total(times_per_year=52) + other_incomes.total(times_per_year=52)) }
       - "exemptions_federal_income_tax": |
-          ${ comma_and_list([job.federal_tax_exemptions.true_values() for job in jobs if job.claiming_federal_tax_exemptions]) }
+          ${ comma_and_list(federal_tax_exemptions.true_values()) }
       - "deductions_federal_income_tax_amount": |
           ${ currency(jobs.deduction_total(times_per_year=52, source='federal_taxes')) }
       - "exemptions_state_income_tax": |
-          ${ comma_and_list([job.state_tax_exemptions.true_values() for job in jobs if job.claiming_state_tax_exemptions]) }
+          ${ comma_and_list(state_tax_exemptions.true_values()) }
       - "deductions_state_income_tax_amount": |
           ${ currency(jobs.deduction_total(times_per_year=52, source='state_taxes')) }
       - "deductions_fica_medicare_amount": ${ currency(jobs.deduction_total(times_per_year=52, source='fica_medicare')) }
@@ -617,7 +672,7 @@ attachments:
       - "deductions_union_dues_amount": ${ currency(jobs.deduction_total(times_per_year=52, source='union_dues')) }
       - "deductions_total_amount": ${ currency(jobs.deduction_total(times_per_year=52)) }
       - "adjusted_net_weekly_income_amount": |
-          ${ currency(jobs.gross_total(times_per_year=52) - jobs.deduction_total(times_per_year=52)) }
+          ${ currency((jobs.gross_total(times_per_year=52) + other_incomes.total(times_per_year=52)) - jobs.deduction_total(times_per_year=52)) }
       - "deduction_loan_repayment_yes": ${ deduction_loan_repayment_yes }
       - "deduction_savings_yes": ${ deduction_savings_yes }
       - "deductions_credit_union_loan_savings_amount": ${ currency(deductions_credit_union_loan_savings_amount) }
