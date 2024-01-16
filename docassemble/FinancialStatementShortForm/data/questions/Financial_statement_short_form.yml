@@ -456,20 +456,27 @@ fields:
     datatype: yesnoradio
 ---
 id: attorney info
+sets:
+  - attorneys[0].address.address
+  - attorneys[0].address.city
+  - attorneys[0].address.zip
+  - attorneys[0].address.unit
+  - attorneys[0].address.state
+  - attorneys[0].address.country
 question: |
   Attorney information
 fields:
   - "Date of attorney signature": attorney_signature_date
     datatype: date
   - Attorney's name: attorneys[0].name
-  - Attorney's address: attorneys[0].address
-    required: False
-    address autocomplete: True
+  - code: |
+      attorneys[0].address_fields(country_code=AL_DEFAULT_COUNTRY, default_state=AL_DEFAULT_STATE)
   - Attorney's phone number: attorneys[0].phone_number
     required: False
   - "Attorney's BBO number": attorney_bbo_number
     maxlength: 30
     datatype: integer
+    required: False
 ---
 id: preview Financial_statement_short_form
 question: |
@@ -645,7 +652,7 @@ attachments:
       - "pensions": |
           ${ True if other_incomes.total(times_per_year=52, source=["pensions"]) else False }
       - "retirement_funds": |
-          ${ True if other_incomes.total(times_per_year=52, source=["retirement_funds"]) else False }
+          ${ True if other_incomes.total(times_per_year=52, source=["retirement funds"]) else False }
       - "income_pensions_retirement_amount": ${ currency(other_incomes.total(times_per_year=52, source=["pensions"]) + other_incomes.total(times_per_year=52, source=["retirement funds"])) }
       - "income_social_security_amount": ${ currency(other_incomes.total(times_per_year=52, source=["social security"])) }
       - "disability": |
@@ -699,10 +706,10 @@ attachments:
       - "net_weekly_income_amount": ${ currency(net_weekly_income_amount) }
       - "gross_yearly_income_last_year_amount": ${ currency(gross_yearly_income_last_year_amount) }
       - "years_paid_into_social_security": ${ "{:,.2f}".format(years_paid_into_social_security) }
-      - "expense_life_insurance_amount": ${ currency(expenses.total(times_per_year=52, source='life infurance')) }
+      - "expense_life_insurance_amount": ${ currency(expenses.total(times_per_year=52, source='life insurance')) }
       - "expense_rent_amount": ${ currency(expenses.total(times_per_year=52, source='rent or mortgage')) }
       - "expense_medical_insurance_amount": ${ currency(expenses.total(times_per_year=52, source='medical insurance')) }
-      - "expense_home_insurance_amount": ${ currency(expenses.total(times_per_year=52, source='home insurance')) }
+      - "expense_home_insurance_amount": ${ currency(expenses.total(times_per_year=52, source='homeowner rental insurance')) }
       - "expense_medical_uninsured_amount": ${ currency(expenses.total(times_per_year=52, source='uninsured medicals')) }
       - "expense_maintenance_amount": ${ currency(expenses.total(times_per_year=52, source='maintenance repair')) } 
       - "expense_heat_amount": ${ currency(expenses.total(times_per_year=52, source='heat')) } 

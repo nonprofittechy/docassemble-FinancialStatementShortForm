@@ -275,3 +275,21 @@ subquestion: |
 
   ${ expenses.add_action() }
 field: review_expenses
+---
+generic object: ALExpenseList
+need:
+  - x[i].source
+  - x[i].display_name
+id: expense information, prefilled
+question: |
+  How much do you spend on **${ x[i].display_name.lower() }**?
+subquestion: |
+  If you have more than one **${ x[i].display_name.lower() }**
+  expense in your household, you'll have a chance to add another later on.
+fields:
+  - Amount: x[i].value
+    datatype: currency
+  - How often do you pay this amount?: x[i].times_per_year
+    default: 52
+    code: |
+      times_per_year_list
