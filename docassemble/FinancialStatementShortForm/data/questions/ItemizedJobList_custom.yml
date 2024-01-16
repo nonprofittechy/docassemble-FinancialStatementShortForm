@@ -293,3 +293,40 @@ fields:
     default: 52
     code: |
       times_per_year_list
+---
+generic object: ALAssetList
+id: asset types
+question: |
+  What kind of assets do you have?
+fields:
+  - no label: x.selected_types
+    datatype: checkboxes
+    code: |
+      asset_terms_ordered
+---
+variable name: asset_terms
+data: !!omap
+  - checking: "Checking Account"
+  - savings: "Savings Account"
+  - cd: "Certificate of Deposit"
+  - ira: "Individual Retirement Account"
+  - mutual fund: "Money or Mutual Fund"
+  - stocks: "Stocks or Bonds"
+  - trust: "Trust Fund"
+  - vehicle: "Vehicle"
+  - real estate: "Real Estate"
+  - other: "Other Asset"
+---
+generic object: ALAssetList
+continue button field: assets.revisit
+question: |
+  Edit assets
+subquestion: |
+  Here is what you've told us about your assets. You can add more or continue
+  to the next question.
+
+  ${ assets.table }
+
+  ${ assets.add_action() }
+field: review_assets
+---

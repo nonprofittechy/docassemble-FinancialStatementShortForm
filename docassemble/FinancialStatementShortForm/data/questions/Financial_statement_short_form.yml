@@ -81,6 +81,7 @@ objects:
   - jobs: ALItemizedJobList.using(complete_attribute='complete', ask_number=True)
   - other_incomes: ALIncomeList.using(complete_attribute='complete')
   - expenses: ALExpenseList.using(complete_attribute='complete')
+  - assets: ALAssetList.using(complete_attribute='complete')
 ---
 sections:
   - review_Financial_statement_short_form: Review your answers
@@ -108,6 +109,7 @@ code: |
   users[0].phone_number
   set_progress(22)
   users[0].birthdate
+  users[0].number_of_children
   users[0].ssn
   users[0].health_insurance
   set_parts(subtitle=str(users))
@@ -116,6 +118,7 @@ code: |
     attorneys[0].address
     attorneys[0].phone_number
     attorney_signature_date
+    retainer_amounts
   set_progress(33)
   
   other_parties.gather()
@@ -132,6 +135,7 @@ code: |
   review_jobs
   
   claiming_federal_tax_exemptions
+  years_paid_ss
   
   set_progress(44)
   
@@ -141,10 +145,12 @@ code: |
   expenses.gathered
   review_expenses
     
-  #set_progress(55)
+  set_progress(55)
   creditors.gather()
-  #
-  #  
+
+  assets.gathered
+  review_assets
+  
   #set_progress(66)
   interview_order_Financial_statement_short_form = True
 ---
@@ -181,6 +187,13 @@ fields:
       users[0].address_fields(country_code=AL_DEFAULT_COUNTRY, default_state=AL_DEFAULT_STATE)
   - Phone number: users[0].phone_number
 ---
+id: users children
+question: |
+  How many children do you have?
+fields:
+  - Years: users[0].number_of_children
+    datatype: integer
+---
 id: is the user the plaintiff or defendant?
 question: |
   Did you file the petition for divorce?
@@ -199,6 +212,13 @@ fields:
     show if:
       variable: user_ask_role
       is: False
+---
+id: years paid into ss
+question: |
+  How many years have you paid into Social Security?
+fields:
+  - Years: years_paid_ss
+    datatype: integer
 ---
 id: claiming any tax exemptions
 question: |
@@ -443,11 +463,6 @@ fields:
     maxlength: 4
     minlength: 4
 ---
-#  - "Number of children": users_children_number
-#    datatype: number
-#  - "Occupation": users_occupation
-#    maxlength: 32
----
 id: users attorney
 question: |
   Do you have an attorney for this matter?
@@ -477,6 +492,15 @@ fields:
     maxlength: 30
     datatype: integer
     required: False
+---
+id: attorney fees
+question: |
+  How much are you paying for an attorney?
+fields:
+  - Retainer amount(s): retainer_amounts
+  - Legal fees incurred, to date, against retainer(s): legal_fees
+  - Lowest anticipated total legal expense to litigate this action: lowest_total
+  - Highest anticipated total legal expense to litigate this action: highest_total
 ---
 id: preview Financial_statement_short_form
 question: |
@@ -619,7 +643,7 @@ attachments:
       - "employers1_address_state": ${ jobs[0].employer.address.state }
       - "users_social_security_number": ${ users[0].ssn }
       - "users_date_of_birth": ${ users[0].birthdate }
-      - "users_children_number": ${ "{:,.2f}".format(users_children_number) }
+      - "users_children_number": ${ users[0].number_of_children }
       - "users_occupation": ${ jobs[0].source }
       - "has_health_insurance_yes": ${ users[0].health_insurance }
       - "has_health_insurance_no": ${ not users[0].health_insurance }
@@ -704,8 +728,8 @@ attachments:
       - "deductions_child_support_compensation_401k_etc_amount": ${ currency(deductions_child_support_compensation_401k_etc_amount) }
       - "other_deductions_total_amount": ${ currency(other_deductions_total_amount) }
       - "net_weekly_income_amount": ${ currency(net_weekly_income_amount) }
-      - "gross_yearly_income_last_year_amount": ${ currency(gross_yearly_income_last_year_amount) }
-      - "years_paid_into_social_security": ${ "{:,.2f}".format(years_paid_into_social_security) }
+      - "gross_yearly_income_last_year_amount": ${ currency(gross_annual_income) }
+      - "years_paid_into_social_security": ${ years_paid_ss }
       - "expense_life_insurance_amount": ${ currency(expenses.total(times_per_year=52, source='life insurance')) }
       - "expense_rent_amount": ${ currency(expenses.total(times_per_year=52, source='rent or mortgage')) }
       - "expense_medical_insurance_amount": ${ currency(expenses.total(times_per_year=52, source='medical insurance')) }
@@ -728,10 +752,10 @@ attachments:
       - "expenses_other_explanation": ${ expenses_other_explanation }
       - "expense_clothing_amount": ${ currency(expenses.total(times_per_year=52, source='clothes')) }
       - "total_weekly_expenses_amount": ${ currency(expenses.total(times_per_year=52)) }
-      - "legal_fees_amount": ${ currency(legal_fees_amount) }
-      - "legal_fees_incurred_to_date_against_retainer_amount": ${ currency(legal_fees_incurred_to_date_against_retainer_amount) }
-      - "legal_fees_total_miniimum_amount": ${ currency(legal_fees_total_miniimum_amount) }
-      - "legal_fees_total_maximum_amount": ${ currency(legal_fees_total_maximum_amount) }
+      - "legal_fees_amount": ${ currency(retainer_amounts) }
+      - "legal_fees_incurred_to_date_against_retainer_amount": ${ currency(legal_fees) }
+      - "legal_fees_total_miniimum_amount": ${ currency(lowest_total) }
+      - "legal_fees_total_maximum_amount": ${ currency(highest_total) }
       - "assets_real_estate_address": ${ assets_real_estate_address }
       - "assets_real_estate_name_on_title": ${ assets_real_estate_name_on_title }
       - "assets_real_estate_fair_market_value": ${ currency(assets_real_estate_fair_market_value) }
