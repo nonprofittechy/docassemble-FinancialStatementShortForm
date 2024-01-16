@@ -4,7 +4,7 @@ include:
   - docassemble.ALToolbox:al_income.yml
   - docassemble.ALMassachusetts:al_massachusetts.yml
   - docassemble.MassAccess:massaccess.yml
-  - ItemizedJobList_custom.yml
+  - al_income_custom.yml
   - review.yml
 ---
 metadata:
@@ -82,6 +82,11 @@ objects:
   - other_incomes: ALIncomeList.using(complete_attribute='complete')
   - expenses: ALExpenseList.using(complete_attribute='complete')
   - assets: ALAssetList.using(complete_attribute='complete')
+  - all_real_estate: DAList.using(object_type=DAObject, complete_attribute='market_value')
+  - motor_vehicles: DAList.using(object_type=DAObject, complete_attribute='market_value')
+  - retirement_accounts: DAList.using(object_type=DAObject, complete_attribute='value')
+  - money_accounts: DAList.using(object_type=DAObject, complete_attribute='value')
+  - other_assets: DAList.using(object_type=DAObject, complete_attribute='value')
 ---
 sections:
   - review_Financial_statement_short_form: Review your answers
@@ -131,8 +136,9 @@ code: |
   set_progress(33)
   
   jobs.gather()
-  #need to add x.which_tips_commissions
   review_jobs
+  
+  credit_union_loan_repayment
   
   claiming_federal_tax_exemptions
   years_paid_ss
@@ -147,9 +153,13 @@ code: |
     
   set_progress(55)
   creditors.gather()
-
-  assets.gathered
-  review_assets
+  
+  all_real_estate.gather()
+  motor_vehicles.gather()
+  money_accounts.gather()
+  retirement_accounts.gather()
+  tax_deferred_annuity_plans
+  other_assets.gather()
   
   #set_progress(66)
   interview_order_Financial_statement_short_form = True
@@ -172,6 +182,23 @@ code: |
   users[0].signature
   Financial_statement_short_form_download
 ---
+sets:
+  - other_parties[0].name.first
+  - other_parties[0].name.last
+  - other_parties[0].name.middle
+  - other_parties[0].name.suffix
+id: names of opposing parties
+question: |
+  % if user_started_case:
+  Name of **defendant** in this
+  matter
+  % else:
+  Name of **plaintiff** in this matter
+  % endif
+fields:
+  - code: |
+      other_parties[0].name_fields(person_or_business='person')
+---
 id: your address
 sets:
   - users[0].address.address
@@ -191,7 +218,7 @@ id: users children
 question: |
   How many children do you have?
 fields:
-  - Years: users[0].number_of_children
+  - Number of children: users[0].number_of_children
     datatype: integer
 ---
 id: is the user the plaintiff or defendant?
@@ -495,12 +522,16 @@ fields:
 ---
 id: attorney fees
 question: |
-  How much are you paying for an attorney?
+  Attorney fees
 fields:
   - Retainer amount(s): retainer_amounts
+    datatype: currency
   - Legal fees incurred, to date, against retainer(s): legal_fees
+    datatype: currency
   - Lowest anticipated total legal expense to litigate this action: lowest_total
+    datatype: currency
   - Highest anticipated total legal expense to litigate this action: highest_total
+    datatype: currency
 ---
 id: preview Financial_statement_short_form
 question: |
@@ -719,15 +750,16 @@ attachments:
       - "deductions_total_amount": ${ currency(jobs.deduction_total(times_per_year=52)) }
       - "adjusted_net_weekly_income_amount": |
           ${ currency((jobs.gross_total(times_per_year=52) + other_incomes.total(times_per_year=52)) - jobs.deduction_total(times_per_year=52)) }
-      - "deduction_loan_repayment_yes": ${ deduction_loan_repayment_yes }
-      - "deduction_savings_yes": ${ deduction_savings_yes }
-      - "deductions_credit_union_loan_savings_amount": ${ currency(deductions_credit_union_loan_savings_amount) }
-      - "deductions_savings_amount": ${ currency(deductions_savings_amount) }
-      - "deductions_retirement_amount": ${ currency(deductions_retirement_amount) }
-      - "other_deductions_specifics": ${ other_deductions_specifics }
-      - "deductions_child_support_compensation_401k_etc_amount": ${ currency(deductions_child_support_compensation_401k_etc_amount) }
-      - "other_deductions_total_amount": ${ currency(other_deductions_total_amount) }
-      - "net_weekly_income_amount": ${ currency(net_weekly_income_amount) }
+      - "deduction_loan_repayment_yes": ${ credit_union_loan_repayment }
+      - "deduction_savings_yes": ${ credit_union_savings_account }
+      - "deductions_credit_union_loan_savings_amount": ${ currency(credit_union_loan_repayment_value) }
+      - "deductions_savings_amount": ${ currency(credit_union_savings_account_value) }
+      - "deductions_retirement_amount": ${ currency(retirement_account_value) }
+      - "other_deductions_specifics": ${ other_account_deduction_explain }
+      - "deductions_child_support_compensation_401k_etc_amount": ${ currency(other_account_deduction_value) }
+      - "other_deductions_total_amount": ${ currency(credit_union_loan_repayment_value + credit_union_savings_account_value + retirement_account_value + other_account_deduction_value) }
+      - "net_weekly_income_amount": | 
+          ${ currency(((jobs.gross_total(times_per_year=52) + other_incomes.total(times_per_year=52)) - jobs.deduction_total(times_per_year=52)) - (credit_union_loan_repayment_value + credit_union_savings_account_value + retirement_account_value + other_account_deduction_value)) }
       - "gross_yearly_income_last_year_amount": ${ currency(gross_annual_income) }
       - "years_paid_into_social_security": ${ years_paid_ss }
       - "expense_life_insurance_amount": ${ currency(expenses.total(times_per_year=52, source='life insurance')) }
@@ -756,33 +788,40 @@ attachments:
       - "legal_fees_incurred_to_date_against_retainer_amount": ${ currency(legal_fees) }
       - "legal_fees_total_miniimum_amount": ${ currency(lowest_total) }
       - "legal_fees_total_maximum_amount": ${ currency(highest_total) }
-      - "assets_real_estate_address": ${ assets_real_estate_address }
-      - "assets_real_estate_name_on_title": ${ assets_real_estate_name_on_title }
-      - "assets_real_estate_fair_market_value": ${ currency(assets_real_estate_fair_market_value) }
-      - "assets_real_estate_mortgage_value": ${ currency(assets_real_estate_mortgage_value) }
-      - "assets_real_estate_equity_value": ${ currency(assets_real_estate_equity_value) }
-      - "assets_motor_vehicle_fair_market_value": ${ currency(assets_motor_vehicle_fair_market_value) }
-      - "assets_motor_vehicle_loan_amount": ${ currency(assets_motor_vehicle_loan_amount) }
-      - "assets_motor_vehicle_equity_value": ${ currency(assets_motor_vehicle_equity_value) }
-      - "assets_motor_vehicle1_fair_market_value": ${ currency(assets_motor_vehicle1_fair_market_value) }
-      - "assets_motor_vehicle1_loan_amount": ${ currency(assets_motor_vehicle1_loan_amount) }
-      - "assets_motor_vehicle1_equity_value": ${ currency(assets_motor_vehicle1_equity_value) }
-      - "assets_retirement_plan_value": ${ currency(assets_retirement_plan_value) }
-      - "assets_retirement_plan1_value": ${ currency(assets_retirement_plan1_value) }
-      - "assets_retirement_plan2_value": ${ currency(assets_retirement_plan2_value) }
-      - "assets_retirement_plan_name_and_account_number": ${ assets_retirement_plan_name_and_account_number }
-      - "assets_tax_deferred_annuity_plan_value": ${ currency(assets_tax_deferred_annuity_plan_value) }
-      - "assets_life_insurance": ${ currency(assets_life_insurance) }
-      - "assets_account_name_and_number": ${ assets_account_name_and_number }
-      - "assets_account_value": ${ currency(assets_account_value) }
-      - "assets_account_name_and_number1": ${ assets_account_name_and_number1 }
-      - "assets_account_value1": ${ assets_account_value1 }
-      - "assets_account_name_and_number2": ${ assets_account_name_and_number2 }
-      - "assets_account_value2": ${ assets_account_value2 }
-      - "assets_stocks_and_bonds": ${ assets_stocks_and_bonds }
-      - "assets_stocks_and_bonds_value": ${ currency(assets_stocks_and_bonds_value) }
-      - "assets_stocks_and_bonds1": ${ assets_stocks_and_bonds1 }
-      - "assets_stocks_and_bonds_value1": ${ assets_stocks_and_bonds_value1 }
-      - "total_assets_value": ${ currency(total_assets_value) }
+      - "assets_real_estate_address": ${ all_real_estate[0].address  }
+      - "assets_real_estate_name_on_title": ${ all_real_estate[0].title_holders }
+      - "assets_real_estate_fair_market_value": ${ currency(all_real_estate[0].market_value) }
+      - "assets_real_estate_mortgage_value": ${ currency(all_real_estate[0].mortgage) }
+      - "assets_real_estate_equity_value": ${ currency(all_real_estate[0].market_value - all_real_estate[0].mortgage) }
+      - "assets_motor_vehicle_fair_market_value": ${ currency(motor_vehicles[0].market_value) }
+      - "assets_motor_vehicle_loan_amount": ${ currency(motor_vehicles[0].loans) }
+      - "assets_motor_vehicle_equity_value": ${ currency(motor_vehicles[0].market_value - motor_vehicles[0].loans) }
+      - "assets_motor_vehicle1_fair_market_value": ${ currency(motor_vehicles[1].market_value) }
+      - "assets_motor_vehicle1_loan_amount": ${ currency(motor_vehicles[1].loans) }
+      - "assets_motor_vehicle1_equity_value": ${ currency(motor_vehicles[1].market_value - motor_vehicles[1].loans) }
+      - "assets_retirement_plan_value": ${ currency(retirement_accounts[0].value) }
+      - "assets_retirement_plan1_value": ${ currency(retirement_accounts[1].value) }
+      - "assets_retirement_plan2_value": ${ currency(retirement_accounts[2].value) }
+      - "assets_retirement_plan_name_and_account_number": |
+          % for retirement_account in retirement_accounts: 
+          ${ retirement_account.name } ${ retirement_account.account_number }
+          % endfor
+      - "assets_tax_deferred_annuity_plan_value": ${ currency(tax_deferred_annuity_plans_value) }
+      - "assets_life_insurance": ${ currency(life_insurance_value) }
+      - "assets_account_name_and_number": |
+          ${ money_accounts[0].name } ${ money_accounts[0].account_number }
+      - "assets_account_value": ${ currency(money_accounts[0].value) }
+      - "assets_account_name_and_number1": |
+          ${ money_accounts[1].name } ${ money_accounts[1].account_number }
+      - "assets_account_value1": ${ currency(money_accounts[1].value) }
+      - "assets_account_name_and_number2": |
+          ${ money_accounts[2].name } ${ money_accounts[2].account_number }
+      - "assets_account_value2": ${ currency(money_accounts[2].value) }
+      - "assets_stocks_and_bonds": ${ other_assets[0].name }
+      - "assets_stocks_and_bonds_value": ${ currency(other_assets[0].value) }
+      - "assets_stocks_and_bonds1": ${ other_assets[1].name }
+      - "assets_stocks_and_bonds_value1": ${ currency(other_assets[1].value) }
+      - "total_assets_value": |
+          ${ currency((all_real_estate[0].market_value - all_real_estate[0].mortgage) + (all_real_estate[0].market_value - all_real_estate[0].mortgage) + (all_real_estate[1].market_value - all_real_estate[1].mortgage) + (retirement_accounts[0].value + retirement_accounts[1].value + retirement_accounts[2].value + tax_deferred_annuity_plans_value + life_insurance_value + money_accounts[0].value + money_accounts[1].value + money_accounts[2].value + other_assets[0].value + other_assets[1].value)) }
       - "attorney_signature_date": ${ attorney_signature_date }
       - "attorney_bbo_number": ${ attorney_bbo_number }
