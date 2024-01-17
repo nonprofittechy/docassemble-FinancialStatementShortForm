@@ -23,6 +23,10 @@ metadata:
     - Jeff Wolf
     - Oonagh Doherty
 ---
+initial: True
+code: |
+  set_locale(currency_symbol=' ')
+---
 mandatory: True
 comment: |
   This contains metadata that will not be overwritten if this YAML file is included in another
@@ -138,28 +142,28 @@ code: |
   jobs.gather()
   review_jobs
   
-  credit_union_loan_repayment
-  
-  claiming_federal_tax_exemptions
-  years_paid_ss
-  
-  set_progress(44)
-  
-  other_incomes.gathered
-  review_other_incomes
-  
-  expenses.gathered
-  review_expenses
-    
-  set_progress(55)
-  creditors.gather()
-  
-  all_real_estate.gather()
-  motor_vehicles.gather()
-  money_accounts.gather()
-  retirement_accounts.gather()
-  tax_deferred_annuity_plans
-  other_assets.gather()
+  #credit_union_loan_repayment
+  #
+  #claiming_federal_tax_exemptions
+  #years_paid_ss
+  #
+  #set_progress(44)
+  #
+  #other_incomes.gathered
+  #review_other_incomes
+  #
+  #expenses.gathered
+  #review_expenses
+  #  
+  #set_progress(55)
+  #creditors.gather()
+  #
+  #all_real_estate.gather()
+  #motor_vehicles.gather()
+  #money_accounts.gather()
+  #retirement_accounts.gather()
+  #tax_deferred_annuity_plans
+  #other_assets.gather()
   
   #set_progress(66)
   interview_order_Financial_statement_short_form = True
@@ -680,9 +684,9 @@ attachments:
       - "has_health_insurance_no": ${ not users[0].health_insurance }
       - "health_insurance_provider": ${ users[0].health_insurance_provider }
       - "base_pay_is_salary": |
-          ${ True if True in [not job.is_part_time and not job.is_hourly for job in jobs] else False }
+          ${ True if True in [not job.is_part_time and not job.is_hourly and not job.is_self_employed for job in jobs] else False }
       - "base_pay_is_wages": |
-          ${ True if True in [not job.is_part_time and job.is_hourly for job in jobs] else False }
+          ${ True if True in [not job.is_part_time and job.is_hourly and not job.is_self_employed for job in jobs] else False }
       - "income_base_pay_amount": ${ currency(jobs.total(times_per_year=52, source=["full time"])) }
       - "income_overtime_amount": |
           ${ currency(jobs.total(times_per_year=52, source=["overtime"])) }
@@ -822,6 +826,42 @@ attachments:
       - "assets_stocks_and_bonds1": ${ other_assets[1].name }
       - "assets_stocks_and_bonds_value1": ${ currency(other_assets[1].value) }
       - "total_assets_value": |
-          ${ currency((all_real_estate[0].market_value - all_real_estate[0].mortgage) + (all_real_estate[0].market_value - all_real_estate[0].mortgage) + (all_real_estate[1].market_value - all_real_estate[1].mortgage) + (retirement_accounts[0].value + retirement_accounts[1].value + retirement_accounts[2].value + tax_deferred_annuity_plans_value + life_insurance_value + money_accounts[0].value + money_accounts[1].value + money_accounts[2].value + other_assets[0].value + other_assets[1].value)) }
+          ${ currency(safe_sum_assets()) }
       - "attorney_signature_date": ${ attorney_signature_date }
       - "attorney_bbo_number": ${ attorney_bbo_number }
+---
+## for total_assets_value
+code: |
+  def safe_sum_assets():
+    total = 0
+    
+    if defined("tax_deferred_annuity_plans_value"):
+      total += tax_deferred_annuity_plans_value
+      
+    log( 0, "console" )
+  
+    return total
+---
+    #log(total, "console")
+    #log(defined("tax_deferred_annuity_plans_value"), "console")
+    #log(tax_deferred_annuity_plans_value, "console")
+    #
+
+    #
+    #if defined(life_insurance_value):
+    #  total += life_insurance_value
+    #  
+    #if len(all_real_estate.complete_elements()) > 0:
+    #  total += sum([(real_estate.market_value - real_estate.mortgage) for real_estate in all_real_estate])
+    #
+    #if len(motor_vehicles.complete_elements()) > 0:
+    #  total += sum([(motor_vehicle.market_value - motor_vehicle.loans) for motor_vehicle in motor_vehicles])
+    #
+    #if len(retirement_accounts.complete_elements()) > 0:
+    #  total += sum([(retirement_account.value) for retirement_account in retirement_accounts])
+    #
+    #if len(money_accounts.complete_elements()) > 0:
+    #  total += sum([(money_account.value) for money_account in money_accounts])
+    #
+    #if len(other_assets.complete_elements()) > 0:
+    #  total += sum([(other_asset.value) for other_asset in other_assets])
