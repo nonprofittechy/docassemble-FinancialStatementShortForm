@@ -1,0 +1,512 @@
+---
+generic object: ALItemizedJob
+code: |
+  x.source
+  if not x.is_self_employed:
+    x.employer.name.first
+  else:
+    x.employer.name.first = "Self-employed"
+    x.employer.name.last = ""
+    x.employer.phone = ""
+    x.employer.address.address = ""
+  x.to_add.complete_attribute = 'complete'
+  x.to_subtract.complete_attribute = 'complete'
+  if x.is_self_employed:
+    x.to_add["self employment"].exists = True
+    x.is_hourly = None
+    x.is_part_time = False
+  else: 
+    x.times_per_year
+    if x.is_part_time:
+      x.to_add["part time"].is_hourly = x.is_hourly
+    else:
+      x.to_add["full time"].is_hourly = x.is_hourly
+  x.to_add.gather()
+  x.add_required_taxes
+  x.to_subtract.gather()
+  x.complete = True
+---
+generic object: ALItemizedJob 
+code: |
+  x.to_subtract.initializeObject("federal_taxes")
+  x.to_subtract["federal_taxes"].exists = True
+  x.to_subtract.initializeObject("state_taxes")
+  x.to_subtract["state_taxes"].exists = True
+  x.add_required_taxes = True
+---
+generic object: ALItemizedJob 
+code: |
+  if x.to_add[i].exists:
+    x.to_add[i].value
+  x.to_add[i].complete = True
+---
+generic object: ALItemizedJob 
+code: |
+  if x.to_subtract[i].exists:
+    x.to_subtract[i].value
+  x.to_subtract[i].complete = True
+---
+generic object: ALItemizedJob 
+code: | 
+  x.to_subtract.there_are_any = True
+--- 
+sets:
+  - x.employer.name.first
+id: employer
+generic object: ALItemizedJob
+question: |
+  Tell us who employs you as a ${ x.source }
+fields:
+  - I am self-employed: x.is_self_employed
+    datatype: yesno
+  - Employer's name: x.employer.name.first
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - note: |
+      ---
+
+      Employer's contact information
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - Street address: x.employer.address.address
+    address autocomplete: True
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - Unit: x.employer.address.unit
+    required: False
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - City: x.employer.address.city
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - State: x.employer.address.state
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - Zip or postal code: x.employer.address.zip
+    required: False
+    show if:
+      variable: x.is_self_employed
+      is: False
+  - Phone number: x.employer.phone_number
+    show if:
+      variable: x.is_self_employed
+      is: False
+---
+generic object: ALItemizedJob
+code: |
+  if defined('x.to_add["full time"]'):
+    x.to_add["full time"].exists = True
+  else:
+    x.to_add["full time"].exists = False
+---
+generic object: ALItemizedJob
+code: |
+  if defined('x.to_add["part time"]'):
+    x.to_add["part time"].exists = True
+  else:
+    x.to_add["part time"].exists = False
+---
+generic object: ALItemizedJob
+code: |
+  x.to_subtract["federal_taxes"].exists = True
+---
+generic object: ALItemizedJob
+code: |
+  x.to_subtract["state_taxes"].exists = True
+---
+id: self employed collect
+generic object: ALItemizedJob
+question: |
+  Enter info from your paystub for your job as a ${ x.source }
+fields:
+  - What is your self employed income?: x.to_add['self employment'].value
+    datatype: currency
+  - How often do you earn this amount?: x.times_per_year
+    input type: radio
+    code: |
+      times_per_year_list
+    datatype: integer
+  - The job has other incomes: x.to_add.there_is_another
+    datatype: yesno
+---
+id: itemized job line items
+generic object: ALItemizedJob
+question: |
+  Enter info from your paystub for your job as a ${ x.source }
+fields:
+  - label: |
+      % if x.is_hourly:
+      What is your hourly pay for this job?
+      % else:
+      What are your wages for this job?
+      % endif
+    field: x.to_add['full time'].value
+    datatype: currency
+    show if:
+      code: x.is_part_time is False
+  - label: |
+      % if x.is_hourly:
+      What is your hourly pay for this job?
+      % else:
+      What are your wages for this job?
+      % endif
+    field: x.to_add['part time'].value
+    datatype: currency
+    show if:
+      code: x.is_part_time is True
+  - I earn overtime at this job: x.to_add['overtime'].exists
+    datatype: yesno
+  - What is your overtime pay for this job?: x.to_add['overtime'].value
+    datatype: currency
+    show if: x.to_add['overtime'].exists
+    required: False
+  - I earn tips at this job: x.to_add['tips'].exists
+    datatype: yesno
+  - What do you earn for tips at this job?: x.to_add['tips'].value
+    datatype: currency
+    show if: x.to_add['tips'].exists
+    required: False
+  - I earn commissions at this job: x.to_add['commissions'].exists
+    datatype: yesno
+  - What do you earn for commissions at this job?: x.to_add['commissions'].value
+    datatype: currency
+    show if: x.to_add['commissions'].exists
+    required: False
+  - I earn bonuses at this job: x.to_add['bonuses'].exists
+    datatype: yesno
+  - What do you earn for bonuses at this job?: x.to_add['bonuses'].value
+    datatype: currency
+    show if: x.to_add['bonuses'].exists
+    required: False
+  - The job has other incomes: x.to_add.there_is_another
+    datatype: yesno
+---
+id: itemized job deductions
+generic object: ALItemizedJob
+question: |
+  Enter info from your paystub for your job as a ${ x.source }
+fields:
+  - What is your federal tax amount?: x.to_subtract['federal_taxes'].value
+    datatype: currency
+    required: False
+  - What is your state tax amount?: x.to_subtract['state_taxes'].value
+    datatype: currency
+    required: False
+  - I pay for FICA and medicare: x.to_subtract['fica_medicare'].exists
+    datatype: yesno
+  - What do you pay for medical insurance?: x.to_subtract['fica_medicare'].value
+    datatype: currency
+    required: False
+    show if: x.to_subtract['fica_medicare'].exists
+  - I pay for medical insurance: x.to_subtract['medical_insurance'].exists
+    datatype: yesno
+  - What do you pay for medical insurance?: x.to_subtract['medical_insurance'].value
+    datatype: currency
+    required: False
+    show if: x.to_subtract['medical_insurance'].exists
+  - I pay union dues: x.to_subtract['union_dues'].exists
+    datatype: yesno
+  - What do you pay for union dues?: x.to_subtract['union_dues'].value
+    datatype: currency
+    required: False
+    show if: x.to_subtract['union_dues'].exists
+  - The job has other deductions: x.to_subtract.there_is_another
+    datatype: yesno
+---
+id: other deductions
+question: |
+  Other deductions
+fields:
+  - I have a credit union loan repayment: credit_union_loan_repayment
+    datatype: yesno
+  - What is your credit union loan repayment deduction amount?: credit_union_loan_repayment_value
+    datatype: currency
+    required: False
+    show if: credit_union_loan_repayment
+  - I have a credit union savings account: credit_union_savings_account
+    datatype: yesno
+  - What is your credit union savings deduction amount?: credit_union_savings_account_value
+    datatype: currency
+    required: False
+    show if: credit_union_savings_account
+  - I have a savings account: savings_account
+    datatype: yesno
+  - What is your savings account deduction amount?: savings_account_value
+    datatype: currency
+    required: False
+    show if: savings_account
+  - I have a retirement account: retirement_account
+    datatype: yesno
+  - What is your retirement account deduction amount?: retirement_account_value
+    datatype: currency
+    required: False
+    show if: retirement_account
+  - I have a another deduction (i.e. Child Support, Deferred Compensation or 401K): other_account_deduction
+    datatype: yesno
+  - Explain: other_account_deduction_explain
+    required: False
+    show if: other_account_deduction
+  - What is your other deduction amount?: other_account_deduction_value
+    datatype: currency
+    required: False
+    show if: other_account_deduction
+---
+variable name: non_wage_income_terms
+data: !!omap
+  - dividends: "Dividends"
+  - interest: "Interest"
+  - trusts: "Trusts"
+  - annuities: "Annuities"
+  - pensions: "Pensions"
+  - retirement funds: "Retirement funds"
+  - social security: "Social Security"
+  - disability: "Disability"
+  - unemployment insurance: "Unemployment insurance" 
+  - workers compensation: "Worker's compensation"
+  - public assistance: "Public assistance"
+  - child support: "Child Support"
+  - alimony: "Alimony (actually received)"
+  - rent: "Income from real estate (rent, etc)"
+  - royalties: "Royalties and other rights"
+  - household contributions: "Contributions from household memeber(s)"
+  - other: "Other"
+---
+generic object: ALIncomeList
+continue button field: other_incomes.revisit
+question: |
+  Edit incomes
+subquestion: |
+  Here is what you've told us about your non job incomes. You can add more or continue
+  to the next question.
+
+  ${ other_incomes.table }
+
+  ${ other_incomes.add_action() }
+field: review_other_incomes
+---
+variable name: expense_terms
+data: !!omap
+  - rent or mortgage: "Rent or Mortgage (PIT)"
+  - homeowner rental insurance: "Homeowners/Tenant Insurance"
+  - maintenance repair: "Maintenance and Repair"
+  - heat: "Heat"
+  - electric or gas: "Electricity and/or Gas"
+  - telephone: "Telephone"
+  - water sewer: "Water/Sewer"
+  - food: "Food"
+  - house supplies: "House Supplies"
+  - laudry and cleaing: "Laundry and Cleaning"
+  - clothes: "Clothing"
+  - life insurance: "Life Insurance"
+  -	medical insurance: "Medical Insurance"
+  -	uninsured medicals: "Uninsured Medicals"
+  -	incidentals and toiletries: "Incidentals and Toiletries"
+  -	motor vehicle expenses: "Motor Vehicle Expenses"
+  -	motor vehicle payment: "Motor Vehicle Payment"
+  -	child care: "Child Care"
+  -	other: "Other"
+---
+generic object: ALExpenseList
+continue button field: expenses.revisit
+question: |
+  Edit expenses
+subquestion: |
+  Here is what you've told us about your expenses. You can add more or continue
+  to the next question.
+
+  ${ expenses.table }
+
+  ${ expenses.add_action() }
+field: review_expenses
+---
+generic object: ALExpenseList
+need:
+  - x[i].source
+  - x[i].display_name
+id: expense information, prefilled
+question: |
+  How much do you spend on **${ x[i].display_name.lower() }**?
+subquestion: |
+  If you have more than one **${ x[i].display_name.lower() }**
+  expense in your household, you'll have a chance to add another later on.
+fields:
+  - Amount: x[i].value
+    datatype: currency
+  - How often do you pay this amount?: x[i].times_per_year
+    default: 52
+    code: |
+      times_per_year_list
+---
+generic object: ALAssetList
+id: asset types
+question: |
+  What kind of assets do you have?
+fields:
+  - no label: x.selected_types
+    datatype: checkboxes
+    code: |
+      asset_terms_ordered
+---
+variable name: asset_terms
+data: !!omap
+  - checking: "Checking Account"
+  - savings: "Savings Account"
+  - cd: "Certificate of Deposit"
+  - ira: "Individual Retirement Account"
+  - mutual fund: "Money or Mutual Fund"
+  - stocks: "Stocks or Bonds"
+  - trust: "Trust Fund"
+  - vehicle: "Vehicle"
+  - other: "Other Asset"
+---
+generic object: ALAssetList
+continue button field: assets.revisit
+question: |
+  Edit assets
+subquestion: |
+  Here is what you've told us about your assets. You can add more or continue
+  to the next question.
+
+  ${ assets.table }
+
+  ${ assets.add_action() }
+field: review_assets
+---
+generic object: ALAssetList
+code: |
+  x[i].name = x[i].source
+---
+##should individual's orgs props be listed?
+id: all_real_estate.there_are_any
+question: |
+  Real estate
+fields:
+  - Do you own any properties?: all_real_estate.there_are_any
+    datatype: yesnoradio
+---
+id: collect properties
+question: |
+  About your ${ ordinal(i) } property
+fields:
+  - Who holds title: all_real_estate[i].title_holders
+  - Address of property: all_real_estate[i].address 
+  - Current fair market value: all_real_estate[i].market_value
+    datatype: currency
+  - Current outstanding mortgage value(s): all_real_estate[i].mortgage
+    datatype: currency
+  - Do you own any other properties?: all_real_estate.there_is_another
+    datatype: yesnoradio
+---
+##should individual's mvs props be listed?
+id: motor_vehicles.there_are_any
+question: |
+  Motor vehicles
+fields:
+  - Do you own any motor vehicles?: motor_vehicles.there_are_any
+    datatype: yesnoradio
+---
+id: collect motor_vehicles
+question: |
+  About your ${ ordinal(i) } motor vehicle
+fields:
+  - Current fair market value: motor_vehicles[i].market_value
+    datatype: currency
+  - Current outstanding loan value(s): motor_vehicles[i].loans
+    datatype: currency
+  - Do you own any other motor vehicles?: motor_vehicles.there_is_another
+    datatype: yesnoradio
+---
+id: retirement_accounts.there_are_any
+question: |
+  Retirement accounts
+subquestion: |
+  Select "Yes" if you have an IRA, Keogh, Pension, Profit Sharing, or Other Retirement Plans
+fields:
+  - Do you have any retirement accounts?: retirement_accounts.there_are_any
+    datatype: yesnoradio
+---
+id: collect retirement_accounts
+question: |
+  About your ${ ordinal(i) } retirement account
+fields:
+  - Financial Institution or Plan Name: retirement_accounts[i].name 
+  - Account Number: retirement_accounts[i].account_number
+  - Current value: retirement_accounts[i].value
+    datatype: currency
+  - Do you have any other retirement accounts?: retirement_accounts.there_is_another
+    datatype: yesnoradio
+---
+id: money_accounts.there_are_any
+question: |
+  Money Accounts
+subquestion: |
+  Select "Yes" if you have Savings & Checking Accounts, Money Market Accounts, Certificates of Deposit-which are held individually, jointly, in the name of another person for your benefit, or held by you for the benefit of your minor child(ren)
+fields:
+  - Do you have any money accounts?: money_accounts.there_are_any
+    datatype: yesnoradio
+---
+id: collect money_accounts
+question: |
+  About your ${ ordinal(i) } money account
+fields:
+  - Financial Institution or Plan Name: money_accounts[i].name 
+  - Account Number: money_accounts[i].account_number
+  - Current value: money_accounts[i].value
+    datatype: currency
+  - Do you have any other money accounts?: money_accounts.there_is_another
+    datatype: yesnoradio
+---
+id: collect other assets
+question: |
+  About your other assets
+fields:
+  - I have tax deferred annuity plan(s): tax_deferred_annuity_plans
+    datatype: yesno
+  - Current value: tax_deferred_annuity_plans_value
+    datatype: currency
+    show if: tax_deferred_annuity_plans
+  - I have life insurance: life_insurance 
+    datatype: yesno
+  - Current value: life_insurance_value
+    datatype: currency
+    show if: life_insurance
+---
+id: other_assets.there_are_any
+question: |
+  Other assets
+subquestion: |
+  Select "Yes" if you have stocks, bonds, or collections.  
+fields:
+  - Do you have any other assets?: other_assets.there_are_any
+    datatype: yesnoradio
+---
+id: collect other assets actual collect
+question: |
+  About your ${ ordinal(i) } other asset
+fields:
+  - Type/Name: other_assets[i].name 
+  - Current value: other_assets[i].value
+    datatype: currency
+  - Do you have any other assets?: other_assets.there_is_another
+    datatype: yesnoradio
+---
+#id: other itemized job income name
+generic object: ALItemizedJob
+question: |
+  Other incomes
+subquestion: |
+  You have already told us about your income from **${comma_and_list( [job_items_names.get(key, key).lower() for key in x.to_add.complete_elements().keys()] )}**.
+fields:
+  - Type of income: x.to_add.new_item_name
+validation code: |
+  if x.to_add.new_item_name in x.to_add.complete_elements().keys():
+    validation_error(f'You already told us about your <strong>{ job_items_names.get(x.to_add.new_item_name, x.to_add.new_item_name) }</strong> that pays { currency( x.to_add[ x.to_add.new_item_name ].value )}. Pick a different name.')
+  else: 
+    x.to_add[ x.to_add.new_item_name ].exists = True
+---
